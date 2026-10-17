@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#b91c1c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <title>Activismo 2027 • Control y Estatus de Votos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jsPDF y AutoTable para generar el informe en PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans text-slate-800">
+
+    <!-- MODAL DE INICIO DE SESIÓN -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-200">
+            <div class="text-center mb-6">
+                <img src="https://suresteinforma.com/wp-content/uploads/2023/03/PRI.jpg" alt="Activismo 2027 Logo" class="h-20 mx-auto mb-3 object-contain rounded-xl shadow-sm">
+                <h2 class="text-2xl font-black text-red-700 tracking-tight">Activismo 2027</h2>
+                <p class="text-xs text-slate-500 mt-1">Módulo de Control de Votación</p>
+            </div>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Usuario</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" id="loginUser" required autocomplete="username" class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. Admin">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Contraseña</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-key"></i></span>
+                        <input type="password" id="loginPassword" required autocomplete="current-password" class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="••••••••">
+                        <button type="button" onclick="togglePassword('loginPassword', 'eyeIconLogin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none">
+                            <i id="eyeIconLogin" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="loginError" class="hidden text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-center">
+                    Usuario o contraseña incorrectos
+                </div>
+
+                <button type="submit" id="btnLogin" class="w-full mt-2 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Entrar al Módulo de Votos
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header class="bg-red-700 text-white shadow-lg border-b-4 border-red-800">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-1 rounded-xl shadow-md flex items-center justify-center">
+                    <img src="https://suresteinforma.com/wp-content/uploads/2023/03/PRI.jpg" alt="Activismo 2027" class="h-10 w-10 object-contain rounded-lg">
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight text-white">Activismo 2027</h1>
+                    <p class="text-xs text-red-100 font-medium">Control de Votación y Estatus en Tiempo Real</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div id="liveClock" class="bg-red-900/60 px-3 py-1.5 rounded-lg text-sm font-mono tracking-wider border border-red-500/30">--:--:--</div>
+                <span id="currentUserBadge" class="text-xs bg-red-800 text-white font-semibold px-3 py-1.5 rounded-xl border border-red-600">Invitado</span>
+                <button id="btnInstalarApp" type="button" class="hidden bg-white hover:bg-red-50 text-red-800 text-xs font-bold py-2 px-3 rounded-xl shadow transition items-center gap-1.5" aria-label="Instalar aplicación">
+                    <i class="fa-solid fa-download"></i> Instalar
+                </button>
+                <button onclick="cerrarSesion()" class="bg-slate-900 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-power-off"></i> Salir
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow flex flex-col gap-6">
+
+        <!-- TARJETAS DE ESTADÍSTICAS RÁPIDAS -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase font-bold text-slate-400">Total Registrados</p>
+                    <p id="statTotal" class="text-2xl font-black text-slate-800 mt-1">0</p>
+                </div>
+                <div class="bg-slate-100 p-3 rounded-xl text-slate-600"><i class="fa-solid fa-users text-xl"></i></div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase font-bold text-emerald-600">Ciudadanos que Ya Votaron</p>
+                    <p id="statVotaron" class="text-2xl font-black text-emerald-600 mt-1">0</p>
+                </div>
+                <div class="bg-emerald-50 p-3 rounded-xl text-emerald-600"><i class="fa-solid fa-square-check text-xl"></i></div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase font-bold text-amber-600">Pendientes por Votar</p>
+                    <p id="statFaltan" class="text-2xl font-black text-amber-600 mt-1">0</p>
+                </div>
+                <div class="bg-amber-50 p-3 rounded-xl text-amber-600"><i class="fa-solid fa-clock text-xl"></i></div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN DE TABLA Y FILTROS -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col flex-grow">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-box-ballot text-red-600"></i> Listado General y Seguimiento de Voto
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Filtra por sección o estatus y controla la votación en tiempo real</p>
+                </div>
+
+                <div id="botonesExportar" class="hidden items-center gap-2 w-full sm:w-auto">
+                    <button onclick="exportarPDFVotacion()" class="bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-file-pdf text-sm"></i> Generar Informe PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- FILTROS, SELECTOR DE SECCIÓN Y BUSCADOR -->
+            <div class="mb-4 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Filtro por estatus de voto -->
+                    <div class="flex gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold">
+                        <button onclick="filtrarVoto('Todos')" id="filtroVotoTodos" class="flex-1 py-2 rounded-lg bg-white shadow text-red-700 border border-slate-200 font-bold text-center">Todos</button>
+                        <button onclick="filtrarVoto('Votaron')" id="filtroVotoSi" class="flex-1 py-2 rounded-lg text-slate-600 hover:bg-white/50 text-center">Ya Votaron</button>
+                        <button onclick="filtrarVoto('Pendientes')" id="filtroVotoNo" class="flex-1 py-2 rounded-lg text-slate-600 hover:bg-white/50 text-center">Pendientes</button>
+                    </div>
+
+                    <!-- Selector de Número de Sección -->
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-map-pin"></i></span>
+                        <select id="filtroSeccion" onchange="filtrarRegistros()" class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition cursor-pointer">
+                            <option value="Todas">Todas las secciones</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Buscador por texto -->
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-search"></i></span>
+                    <input type="text" id="buscador" oninput="filtrarRegistros()" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Buscar por nombre, clave, calle o teléfono...">
+                </div>
+            </div>
+
+            <!-- TABLA -->
+            <div class="overflow-x-auto flex-grow rounded-xl border border-slate-200 max-h-[500px]">
+                <table id="tablaRegistros" class="w-full text-left border-collapse">
+                    <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-bold tracking-wider sticky top-0 z-10">
+                        <tr>
+                            <th class="p-3">Nombre Completo</th>
+                            <th class="p-3">Ubicación / Sección</th>
+                            <th class="p-3">Teléfono</th>
+                            <th class="p-3 text-center">Estatus de Voto</th>
+                            <th class="p-3 text-center">Acción Rápida</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCuerpo" class="divide-y divide-slate-100 text-sm">
+                        <tr>
+                            <td colspan="5" class="text-center py-10 text-slate-400">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl text-red-600 mb-2"></i>
+                                <p>Cargando datos del servidor...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 flex justify-between items-center text-xs text-slate-500">
+                <span id="totalRegistros">Total: 0</span>
+                <span id="estadoConexion" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Conectado a la Nube</span>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        Activismo 2027 • Módulo Independiente de Control de Votación
+    </footer>
+
+    <!-- Notificación Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 left-5 sm:left-auto transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[60]">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
+    </div>
+
+    <!-- Instalación PWA -->
+    <script>
+      (() => {
+        const btn = document.getElementById('btnInstalarApp');
+        let installPrompt = null;
+        const esStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (esStandalone()) { btn.classList.add('hidden'); return; }
+        window.addEventListener('beforeinstallprompt', (event) => {
+          event.preventDefault(); installPrompt = event; btn.classList.remove('hidden'); btn.classList.add('flex');
+        });
+        btn.addEventListener('click', async () => {
+          if (installPrompt) {
+            installPrompt.prompt();
+            await installPrompt.userChoice;
+            installPrompt = null; btn.classList.add('hidden'); btn.classList.remove('flex');
+          } else {
+            alert('Para instalar: abre esta página desde Chrome o Edge usando HTTPS, luego elige “Instalar aplicación” en el menú del navegador. En iPhone/iPad, usa Compartir → Añadir a pantalla de inicio.');
+          }
+        });
+        window.addEventListener('appinstalled', () => { btn.classList.add('hidden'); btn.classList.remove('flex'); });
+        if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+        }
+      })();
+    </script>
+
+    <!-- SCRIPTS DE CONEXIÓN A FIREBASE Y LÓGICA DE VOTOS -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBqKSZ5zkDidsjWRZpb6lT1xronLWkKYsI",
+            authDomain: "proyecto-11-1950e.firebaseapp.com",
+            databaseURL: "https://proyecto-11-1950e-default-rtdb.firebaseio.com",
+            projectId: "proyecto-11-1950e",
+            storageBucket: "proyecto-11-1950e.firebasestorage.app",
+            messagingSenderId: "604758045583",
+            appId: "1:604758045583:web:f352dde37bbdb397e6d1fa",
+            measurementId: "G-P19J0Q4ZR8"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+
+        const $ = (id) => document.getElementById(id);
+        const leerLS = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+        const escribirLS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+        const borrarLS = (k) => { try { localStorage.removeItem(k); } catch (e) {} };
+
+        let usuarioActual = leerLS('usuarioActual') || null;
+        let listaUsuariosCloud = {};
+        let listaGlobalRegistros = [];
+        let filtroVotoActual = 'Todos';
+
+        function esc(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        window.togglePassword = function (idInput, idIcon) {
+            const input = $(idInput), icon = $(idIcon);
+            if (input.type === 'password') { input.type = 'text'; icon.className = 'fa-solid fa-eye-slash'; }
+            else { input.type = 'password'; icon.className = 'fa-solid fa-eye'; }
+        };
+
+        window.mostrarToast = function (mensaje, tipo = 'success') {
+            const toast = $('toast');
+            $('toastMsg').textContent = mensaje;
+            $('toastIcon').className = tipo === 'success' ? 'fa-solid fa-circle-check text-emerald-400 text-lg' : 'fa-solid fa-triangle-exclamation text-rose-400 text-lg';
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            clearTimeout(window.__toastTimer);
+            window.__toastTimer = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        };
+
+        setInterval(() => {
+            $('liveClock').textContent = new Date().toLocaleTimeString('es-MX');
+        }, 1000);
+
+        // Autenticación Nube
+        onSnapshot(collection(db, 'usuarios'), (snapshot) => {
+            listaUsuariosCloud = {};
+            snapshot.forEach((d) => { listaUsuariosCloud[d.id] = d.data(); });
+            if (Object.keys(listaUsuariosCloud).length === 0) {
+                setDoc(doc(db, 'usuarios', 'Admin'), { password: 'admin1234' }).catch(() => {});
+                listaUsuariosCloud['Admin'] = { password: 'admin1234' };
+            }
+            if (usuarioActual && listaUsuariosCloud[usuarioActual]) {
+                $('loginModal').classList.add('hidden');
+                actualizarPermisosUI();
+            } else {
+                if (usuarioActual) { borrarLS('usuarioActual'); usuarioActual = null; }
+                $('loginModal').classList.remove('hidden');
+            }
+        });
+
+        $('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = $('loginUser').value.trim();
+            const pass = $('loginPassword').value.trim();
+            if (listaUsuariosCloud[user] && listaUsuariosCloud[user].password === pass) {
+                usuarioActual = user;
+                escribirLS('usuarioActual', user);
+                $('loginModal').classList.add('hidden');
+                $('loginError').classList.add('hidden');
+                $('loginForm').reset();
+                actualizarPermisosUI();
+                mostrarToast('¡Bienvenido, ' + user + '!');
+            } else {
+                $('loginError').classList.remove('hidden');
+            }
+        });
+
+        window.cerrarSesion = function () {
+            borrarLS('usuarioActual');
+            usuarioActual = null;
+            $('loginModal').classList.remove('hidden');
+            $('currentUserBadge').textContent = 'Invitado';
+            actualizarPermisosUI();
+            mostrarToast('Has salido del sistema');
+        };
+
+        function esAdmin() { return usuarioActual === 'Admin'; }
+
+        function actualizarPermisosUI() {
+            $('currentUserBadge').textContent = usuarioActual || 'Invitado';
+            const botones = $('botonesExportar');
+            botones.classList.toggle('hidden', !esAdmin());
+            botones.classList.toggle('flex', esAdmin());
+            filtrarRegistros();
+        }
+
+        // Carga de Registros desde la misma colección de Firestore
+        onSnapshot(collection(db, 'registros'), (snapshot) => {
+            listaGlobalRegistros = [];
+            snapshot.forEach(d => listaGlobalRegistros.push({ id: d.id, ...d.data() }));
+            listaGlobalRegistros.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+            actualizarSelectorSecciones();
+            actualizarEstadisticas();
+            filtrarRegistros();
+        });
+
+        function actualizarSelectorSecciones() {
+            const select = $('filtroSeccion');
+            const valorActual = select.value;
+            // Extraer secciones únicas y ordenarlas
+            const secciones = [...new Set(listaGlobalRegistros.map(r => r.seccion).filter(Boolean))].sort();
+            
+            let html = '<option value="Todas">Todas las secciones</option>';
+            secciones.forEach(s => {
+                html += '<option value="' + esc(s) + '">Sección: ' + esc(s) + '</option>';
+            });
+            select.innerHTML = html;
+            select.value = secciones.includes(valorActual) ? valorActual : 'Todas';
+        }
+
+        function actualizarEstadisticas() {
+            const seccionSel = $('filtroSeccion').value;
+            const datosBase = seccionSel === 'Todas' ? listaGlobalRegistros : listaGlobalRegistros.filter(r => r.seccion === seccionSel);
+            
+            const total = datosBase.length;
+            const votaron = datosBase.filter(r => r.yaVoto).length;
+            const faltan = total - votaron;
+            
+            $('statTotal').textContent = total;
+            $('statVotaron').textContent = votaron;
+            $('statFaltan').textContent = faltan;
+        }
+
+        window.filtrarVoto = function (tipo) {
+            filtroVotoActual = tipo;
+            ['Todos', 'Votaron', 'Pendientes'].forEach(t => {
+                const btn = $('filtroVoto' + (t === 'Pendientes' ? 'No' : (t === 'Votaron' ? 'Si' : 'Todos')));
+                btn.className = t === tipo ? 'flex-1 py-2 rounded-lg bg-white shadow text-red-700 border border-slate-200 font-bold text-center' : 'flex-1 py-2 rounded-lg text-slate-600 hover:bg-white/50 text-center';
+            });
+            filtrarRegistros();
+        };
+
+        window.filtrarRegistros = function () {
+            const texto = $('buscador').value.toLowerCase().trim();
+            const seccionSel = $('filtroSeccion').value;
+            
+            let filtrados = listaGlobalRegistros;
+            
+            // Filtro por sección
+            if (seccionSel !== 'Todas') {
+                filtrados = filtrados.filter(r => r.seccion === seccionSel);
+            }
+
+            // Filtro por estatus de voto
+            if (filtroVotoActual === 'Votaron') filtrados = filtrados.filter(r => r.yaVoto);
+            if (filtroVotoActual === 'Pendientes') filtrados = filtrados.filter(r => !r.yaVoto);
+
+            // Buscador por texto
+            if (texto) {
+                filtrados = filtrados.filter(i => [i.nombre, i.calle, i.seccion, i.telefono, i.claveElector].some(c => String(c || '').toLowerCase().includes(texto)));
+            }
+            
+            actualizarEstadisticas();
+            renderizarTabla(filtrados);
+        };
+
+        function renderizarTabla(datos) {
+            const tbody = $('tablaCuerpo');
+            if (!usuarioActual) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-400">Inicia sesión para ver el control de votos.</td></tr>';
+                $('totalRegistros').textContent = 'Total: 0';
+                return;
+            }
+            if (!datos.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-400">No se encontraron registros en esta sección.</td></tr>';
+                $('totalRegistros').textContent = 'Total: 0';
+                return;
+            }
+            tbody.innerHTML = datos.map(i => {
+                const badgeVoto = i.yaVoto
+                    ? '<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-check"></i> SÍ (VOTÓ)</span>'
+                    : '<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-clock"></i> NO (PENDIENTE)</span>';
+                
+                const btnAccionVoto = i.yaVoto
+                    ? '<button onclick="cambiarEstatusVoto(\'' + i.id + '\', false)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded-xl transition" title="Marcar como pendiente">Desmarcar</button>'
+                    : '<button onclick="cambiarEstatusVoto(\'' + i.id + '\', true)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow transition" title="Marcar como votó"><i class="fa-solid fa-check mr-1"></i> Marcar Voto</button>';
+
+                return '<tr class="hover:bg-slate-50 transition border-b border-slate-100">' +
+                    '<td class="p-3 font-bold text-slate-800">' + esc(i.nombre) + '</td>' +
+                    '<td class="p-3 text-xs text-slate-600"><p>' + esc(i.calle) + ' #' + esc(i.numero) + '</p><p class="text-[10px] text-slate-400">Sec: ' + esc(i.seccion) + '</p></td>' +
+                    '<td class="p-3 text-xs text-slate-600">' + esc(i.telefono) + '</td>' +
+                    '<td class="p-3 text-center">' + badgeVoto + (i.votoTimestamp ? '<p class="text-[9px] text-slate-400 mt-0.5">' + esc(i.votoTimestamp) + '</p>' : '') + '</td>' +
+                    '<td class="p-3 text-center">' + btnAccionVoto + '</td></tr>';
+            }).join('');
+            $('totalRegistros').textContent = 'Total en vista: ' + datos.length;
+        }
+
+        window.cambiarEstatusVoto = async function (id, estatus) {
+            try {
+                const horaActual = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+                await updateDoc(doc(db, 'registros', id), {
+                    yaVoto: estatus,
+                    votoTimestamp: estatus ? 'A las ' + horaActual : null
+                });
+                mostrarToast(estatus ? '¡Voto marcado correctamente!' : 'Estatus cambiado a pendiente.');
+            } catch (err) { mostrarToast('No se pudo actualizar el estatus.', 'error'); }
+        };
+
+        // ==========================================
+        // GENERACIÓN DE INFORME EN PDF (RESPETA FILTRO DE SECCIÓN)
+        // ==========================================
+        window.exportarPDFVotacion = function () {
+            if (!esAdmin()) { mostrarToast('Solo el administrador puede generar el informe PDF.', 'error'); return; }
+            
+            const seccionSel = $('filtroSeccion').value;
+            const datosExportar = seccionSel === 'Todas' ? listaGlobalRegistros : listaGlobalRegistros.filter(r => r.seccion === seccionSel);
+
+            if (!datosExportar.length) { mostrarToast('No hay registros para exportar en esta sección.', 'error'); return; }
+
+            const { jsPDF } = window.jspdf;
+            const docPdf = new jsPDF('p', 'mm', 'a4');
+
+            // Encabezado institucional del PDF
+            docPdf.setFontSize(16);
+            docPdf.setTextColor(185, 28, 28);
+            docPdf.text('Activismo 2027 • Informe Oficial de Votación', 14, 20);
+
+            docPdf.setFontSize(10);
+            docPdf.setTextColor(100, 100, 100);
+            const total = datosExportar.length;
+            const votaron = datosExportar.filter(r => r.yaVoto).length;
+            const pendientes = total - votaron;
+            const textoSeccion = seccionSel === 'Todas' ? 'Todas las Secciones' : 'Sección: ' + seccionSel;
+
+            docPdf.text('Filtro: ' + textoSeccion + ' | Fecha: ' + new Date().toLocaleDateString('es-MX') + ' | Total: ' + total + ' | Votaron: ' + votaron + ' | Pendientes: ' + pendientes, 14, 28);
+
+            // Mapeo de filas para la tabla del PDF
+            const columnas = ['Nombre Completo', 'Sección', 'Teléfono', 'Registro', '¿Ya Votó?', 'Hora de Voto'];
+            const filas = datosExportar.map(r => [
+                r.nombre,
+                r.seccion,
+                r.telefono,
+                r.fecha + ' ' + r.hora,
+                r.yaVoto ? 'SÍ' : 'NO',
+                r.votoTimestamp ? r.votoTimestamp.replace('A las ', '') : '-'
+            ]);
+
+            docPdf.autoTable({
+                head: [columnas],
+                body: filas,
+                startY: 35,
+                styles: { fontSize: 8, cellPadding: 3 },
+                headStyles: { fillColor: [185, 28, 28] },
+                columnStyles: {
+                    4: { fontStyle: 'bold', textColor: row => row.cell.raw === 'SÍ' ? [16, 185, 129] : [217, 119, 6] }
+                }
+            });
+
+            docPdf.save('Informe_Votacion_' + (seccionSel === 'Todas' ? 'General' : 'Seccion_' + seccionSel) + '.pdf');
+            mostrarToast('¡Informe en PDF generado con éxito!');
+        };
+    </script>
+</body>
+</html>
