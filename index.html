@@ -515,7 +515,7 @@
     </footer>
 
     <div id="bannerUpd" style="display:none" class="fixed bottom-0 inset-x-0 z-[100] bg-slate-900 text-white text-sm p-3 items-center justify-between gap-3"><span>Hay una versión nueva disponible.</span><button onclick="actualizarApp()" class="bg-red-600 px-3 py-1.5 rounded-lg font-semibold">Actualizar</button></div>
-<div id="modalIOS" style="display:none" class="fixed inset-0 z-[100] bg-black/60 items-center justify-center p-4" onclick="this.style.display='none'"><div class="bg-white rounded-2xl p-5 max-w-sm text-sm text-slate-700"><h3 class="font-bold text-lg mb-2">Instalar en iPhone/iPad</h3><p>En <b>Safari</b> toca el botón <b>Compartir</b> y luego <b>"Añadir a pantalla de inicio"</b>.</p><p class="mt-3 text-xs text-slate-500">Toca para cerrar.</p></div></div>
+<div id="modalIOS" style="display:none" class="fixed inset-0 z-[100] bg-black/60 items-center justify-center p-4" onclick="this.style.display='none'"><div class="bg-white rounded-2xl p-5 max-w-sm text-sm text-slate-700"><h3 class="font-bold text-lg mb-2">Instalar como app</h3><p id="modalIOSTxt"></p><p class="mt-3 text-xs text-slate-500">Toca para cerrar.</p></div></div>
 <div id="toast" class="fixed bottom-5 right-5 left-5 sm:left-auto transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[60]">
         <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
@@ -2446,9 +2446,14 @@
   window.addEventListener('appinstalled',function(){dp=null;mostrar(false);});
   window.instalarApp=async function(){
     if(dp){dp.prompt(); await dp.userChoice; dp=null; mostrar(false);}
-    else if(esIOS){document.getElementById('modalIOS').style.display='flex';}
+    else {
+      document.getElementById('modalIOSTxt').innerHTML = esIOS
+        ? 'En <b>Safari</b> toca el botón <b>Compartir</b> y luego <b>"Añadir a pantalla de inicio"</b>.'
+        : 'Abre el menú del navegador (<b>⋮</b> o <b>☰</b>) y elige <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>.';
+      document.getElementById('modalIOS').style.display='flex';
+    }
   };
-  document.addEventListener('DOMContentLoaded',function(){ if(!standalone && esIOS) mostrar(true); });
+  document.addEventListener('DOMContentLoaded',function(){ if(!standalone) mostrar(true); });
   var reg=null;
   function aviso(){document.getElementById('bannerUpd').style.display='flex';}
   window.actualizarApp=function(){ if(reg&&reg.waiting) reg.waiting.postMessage('SKIP_WAITING'); };
