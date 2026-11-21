@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activismo 2027</title>
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#b91c1c">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Activismo">
-<link rel="icon" type="image/png" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <meta name="theme-color" content="#b91c1c">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Activismo">
+    <link rel="icon" type="image/png" href="./icon-192.png">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -58,6 +57,10 @@
 
                 <button type="submit" id="btnLogin" class="w-full mt-2 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-right-to-bracket"></i> Entrar al Sistema
+                </button>
+
+                <button type="button" id="btnInstalarLogin" onclick="instalarApp()" style="display:none" class="w-full mt-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow transition items-center justify-center gap-2">
+                    <i class="fa-solid fa-mobile-screen-button"></i> Instalar App en este Teléfono
                 </button>
             </form>
         </div>
@@ -239,8 +242,10 @@
                 <button id="btnVerColaboradores" onclick="abrirModalColaboradores()" class="hidden bg-white hover:bg-slate-100 text-red-700 text-xs font-bold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
                     <i class="fa-solid fa-users"></i> Colaboradores
                 </button>
-                <button id="btnInstalar" onclick="instalarApp()" style="display:none" class="bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition items-center gap-1.5"><i class="fa-solid fa-download"></i> Instalar</button>
-<button onclick="cerrarSesion()" class="bg-slate-900 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
+                <button id="btnInstalar" onclick="instalarApp()" style="display:none" class="bg-amber-400 hover:bg-amber-300 text-slate-900 text-xs font-bold py-2 px-3 rounded-xl shadow transition items-center gap-1.5">
+                    <i class="fa-solid fa-download"></i> Instalar App
+                </button>
+                <button onclick="cerrarSesion()" class="bg-slate-900 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
                     <i class="fa-solid fa-power-off"></i> Salir
                 </button>
             </div>
@@ -516,34 +521,22 @@
     </footer>
 
     <div id="bannerUpd" style="display:none" class="fixed bottom-0 inset-x-0 z-[100] bg-slate-900 text-white text-sm p-3 items-center justify-between gap-3"><span>Hay una versión nueva disponible.</span><button onclick="actualizarApp()" class="bg-red-600 px-3 py-1.5 rounded-lg font-semibold">Actualizar</button></div>
-<div id="modalIOS" style="display:none" class="fixed inset-0 z-[100] bg-black/60 items-center justify-center p-4" onclick="this.style.display='none'"><div class="bg-white rounded-2xl p-5 max-w-sm text-sm text-slate-700"><h3 class="font-bold text-lg mb-2">Instalar como app</h3><p id="modalIOSTxt"></p><p class="mt-3 text-xs text-slate-500">Toca para cerrar.</p></div></div>
-<div id="toast" class="fixed bottom-5 right-5 left-5 sm:left-auto transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[60]">
+    <div id="modalIOS" style="display:none" class="fixed inset-0 z-[100] bg-black/60 items-center justify-center p-4" onclick="this.style.display='none'"><div class="bg-white rounded-2xl p-5 max-w-sm text-sm text-slate-700"><h3 class="font-bold text-lg mb-2">Instalar como app</h3><p id="modalIOSTxt"></p><p class="mt-3 text-xs text-slate-500">Toca para cerrar.</p></div></div>
+    <div id="toast" class="fixed bottom-5 right-5 left-5 sm:left-auto transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[60]">
         <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
-    <!-- ===== Intérprete de la INE (probado con 49 casos) ===== -->
+    <!-- ===== Intérprete de la INE ===== -->
     <script>
-/* Intérprete del texto leído (OCR) del frente de una credencial INE.
- *
- * Regla de oro: un dato solo se coloca en un campo si su estructura lo valida.
- * Si no se puede validar, el campo queda vacío (o marcado "revisar"), nunca
- * se rellena con texto que podría ser de otra parte de la credencial.
- *
- * La CURP y la clave de elector se usan únicamente para validar la fecha de
- * nacimiento y calcular la edad; nunca se devuelven ni se guardan.
- */
 (function (root) {
   'use strict';
 
-  // Palabras impresas en la credencial que nunca forman parte de un nombre.
   var RUIDO = ['INSTITUTO', 'NACIONAL', 'ELECTORAL', 'CREDENCIAL', 'PARA', 'VOTAR', 'SEXO', 'MEXICO',
     'MEXICANOS', 'FEDERAL', 'ELECTORES', 'FIRMA', 'HUELLA', 'DOMICILIO', 'NOMBRE', 'CURP', 'ESTADO',
     'MUNICIPIO', 'LOCALIDAD', 'SECCION', 'EMISION', 'VIGENCIA', 'NACIMIENTO', 'FECHA', 'CLAVE',
     'REGISTRO', 'EDAD'];
 
-  // Etiquetas impresas: la primera palabra debe estar al inicio de la línea;
-  // las siguientes pueden aparecer en las dos posiciones siguientes ("DE", ruido).
   var ETIQUETAS = [
     { k: 'nombre', claves: ['NOMBRE'] },
     { k: 'domicilio', claves: ['DOMICILIO'] },
@@ -580,11 +573,6 @@
   var PARTICULAS = ['de', 'del', 'la', 'las', 'los', 'y', 'e'];
   var A_LETRA = { '0': 'O', '1': 'I', '5': 'S', '8': 'B', '2': 'Z', '6': 'G' };
 
-  // ---------- utilidades de texto ----------
-
-  // Devuelve las líneas en mayúsculas, sin acentos (se conserva la Ñ) y sin símbolos raros.
-  // Los caracteres combinantes se construyen con códigos para que ninguna herramienta
-  // que reformatee el archivo pueda alterarlos.
   var ENIE = String.fromCharCode(0xD1);
   var N_CON_TILDE = new RegExp('N' + String.fromCharCode(0x303), 'g');
   var MARCAS = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
@@ -638,11 +626,9 @@
     return pos;
   }
 
-  // Si la línea empieza con una etiqueta impresa, devuelve { k, resto }.
   function lineaEtiqueta(linea) {
     var tokens = linea.split(' ');
     for (var i = 0; i < ETIQUETAS.length; i++) {
-      // Etiquetas largas: se tolera hasta 2 fragmentos de ruido (restos de la foto) antes de ellas.
       var maxOff = ETIQUETAS[i].claves[0].length >= 6 ? 2 : 0;
       for (var off = 0; off <= maxOff && off < tokens.length; off++) {
         var n = coincideEtiqueta(tokens.slice(off), ETIQUETAS[i]);
@@ -676,19 +662,14 @@
     }).join(' ');
   }
 
-  // Letras que el OCR confunde con dígitos (solo se aplican a texto que debe ser numérico).
   function digitos(s) {
     return s.replace(/[OQD]/g, '0').replace(/[IL]/g, '1');
   }
 
-  // Enmascara códigos largos (CURP, clave de elector) para mostrar el texto leído sin exponerlos.
   function enmascarar(linea) {
     return String(linea).replace(/\b(?=[A-ZÑ]*\d)[A-Z0-9Ñ]{13,}\b/g, '••••••••');
   }
 
-  // ---------- nombre ----------
-
-  // "CARL0S" -> "CARLOS": solo si la línea es casi toda letras (1 o 2 dígitos sueltos).
   function corregirLetras(l) {
     var nd = (l.match(/[0-9]/g) || []).length;
     var nl = (l.match(/[A-ZÑ]/g) || []).length;
@@ -702,7 +683,7 @@
     var pal = l.replace(/[.'\-]/g, ' ').split(' ').filter(function (p) { return p.length > 1 || p === 'Y'; });
     if (!pal.length || pal.length > 5) return null;
     for (var i = 0; i < pal.length; i++) if (RUIDO.indexOf(pal[i]) >= 0) return null;
-    if (pal.join('').length < 2) return null;   // apellidos de 2 letras (Ti, Ek, Uc, Ku...) son válidos
+    if (pal.join('').length < 2) return null;
     return pal.join(' ');
   }
 
@@ -727,8 +708,6 @@
     return { valor: nombre ? titulo(nombre) : '', estado: estado, nota: nota };
   }
 
-  // ---------- domicilio ----------
-
   function corregirNumero(tok) {
     if (/^[0-9OQDIL]+$/.test(tok) && /[0-9]/.test(tok)) return digitos(tok);
     return tok;
@@ -742,13 +721,11 @@
     if (!tipo) return null;
     var resto = tokens.slice(1).join(' ');
 
-    // Cruzamientos: "X a Y b", "ENTRE a Y b" o "POR a Y b".
     var cruz = '', numeroFinal = '';
     var mc = resto.match(/(?:^|\s)(?:ENTRE|ENTRA|X|POR|CRUZ(?:AMIENTOS)?)\.?\s+(.+?)\s+Y\s+(.+)$/);
     if (mc) {
       var segunda = mc[2].split(/\s+(?:COL|COLONIA|FRACC|FRACCIONAMIENTO|CP|C\.P\.)(?:\s|$)/)[0].trim();
       var st = segunda.split(' ').map(corregirNumero);
-      // "69 A 455": el número de la casa quedó pegado al final de la segunda calle.
       if (st.length >= 2 && /^\d+$/.test(st[st.length - 1]) &&
           (/^[A-Z]$/.test(st[st.length - 2]) || /^\d+$/.test(st[st.length - 2]))) {
         numeroFinal = st.pop();
@@ -776,8 +753,6 @@
     return { calle: tipo + ' ' + titulo(nombreCalle), numero: numero, cruzamientos: cruz };
   }
 
-  // ---------- fechas, CURP y clave de elector ----------
-
   function validarFecha(y, m, d, hoy) {
     if (!(y >= 1900 && y <= hoy.getFullYear())) return false;
     if (!(m >= 1 && m <= 12)) return false;
@@ -792,7 +767,6 @@
     return e;
   }
 
-  // La clave de elector no trae siglo: se elige el que dé una edad de 18 a 120 años.
   function resolverSiglo(yy, m, d, hoy) {
     var cands = [2000 + yy, 1900 + yy], i, e;
     for (i = 0; i < cands.length; i++) {
@@ -822,7 +796,6 @@
     return out;
   }
 
-  // Busca una CURP y una clave de elector. Devuelve solo las fechas que contienen.
   function buscarCodigos(lineas, hoy) {
     var res = { curp: null, clave: null };
     lineas.forEach(function (l) {
@@ -872,7 +845,6 @@
     var campo = { valor: '', estado: 'vacio', nota: '' };
 
     if (!cand.length) {
-      // Credenciales antiguas imprimen la edad directamente.
       var me = plano.match(/\bEDAD\s*[:.]?\s*([0-9OQDIL]{2,3})\b/);
       if (me) {
         var e0 = +digitos(me[1]);
@@ -915,8 +887,6 @@
     return { campo: campo, avisos: avisos, hayCodigos: !!(cods.curp || cods.clave) };
   }
 
-  // ---------- sección ----------
-
   function numeroSeccion(tok) {
     var crudo = String(tok || '').replace(/[^A-Z0-9Ñ]/g, '');
     if (!/^[0-9OQDIL]{3,4}$/.test(crudo)) return '';
@@ -926,7 +896,6 @@
 
   function leerSeccion(plano) {
     var tokens = plano.split(' ').filter(Boolean), i, j, d;
-    // 1) Etiqueta SECCIÓN (tolera errores de lectura) seguida del número.
     for (i = 0; i < tokens.length; i++) {
       if (!casiIgual(tokens[i], 'SECCION')) continue;
       for (j = i + 1; j <= i + 2 && j < tokens.length; j++) {
@@ -937,26 +906,22 @@
         }
       }
     }
-    // 1b) Etiqueta y número pegados ("SECCION0123").
     var mg = plano.match(/SEC[CG][A-Z0-9]{0,3}\s*[:.]?\s*([0-9OQDIL]{4})(?![0-9A-Z])/);
     if (mg) {
       d = numeroSeccion(mg[1]);
       if (d.length === 4) return { valor: d, estado: 'ok', nota: '' };
     }
-    // 2) El número de 4 dígitos que va justo antes de LOCALIDAD.
     for (i = 1; i < tokens.length; i++) {
       if (casiIgual(tokens[i], 'LOCALIDAD')) {
         d = numeroSeccion(tokens[i - 1]);
         if (d.length === 4) return { valor: d, estado: 'revisar', nota: 'La etiqueta no se leyó; se tomó el número junto a LOCALIDAD. Verifícala.' };
       }
     }
-    // 2b) Número pegado a LOCALIDAD ("1234LOCALIDAD").
     var ml = plano.match(/([0-9OQDIL]{4})\s*LOCALI[A-Z0-9]{0,4}/);
     if (ml) {
       d = numeroSeccion(ml[1]);
       if (d.length === 4) return { valor: d, estado: 'revisar', nota: 'La etiqueta no se leyó; se tomó el número junto a LOCALIDAD. Verifícala.' };
     }
-    // 3) El número de 4 dígitos que sigue a MUNICIPIO + su clave.
     for (i = 0; i + 2 < tokens.length; i++) {
       if (casiIgual(tokens[i], 'MUNICIPIO') && /^[0-9OQDIL]{1,3}$/.test(tokens[i + 1])) {
         d = numeroSeccion(tokens[i + 2]);
@@ -965,8 +930,6 @@
     }
     return { valor: '', estado: 'vacio', nota: '' };
   }
-
-  // ---------- interpretación completa ----------
 
   function vacio() { return { valor: '', estado: 'vacio', nota: '' }; }
 
@@ -984,7 +947,6 @@
     var iN = indiceEtiqueta(etiquetas, 'nombre');
     if (iN >= 0) campos.nombre = leerNombre(bloqueDesde(lineas, etiquetas, iN));
 
-    // Respaldo: si no se leyó la etiqueta NOMBRE, se toman las líneas de nombre justo antes de DOMICILIO.
     if (campos.nombre.estado === 'vacio') {
       var iDom = indiceEtiqueta(etiquetas, 'domicilio');
       if (iDom > 0) {
@@ -1021,7 +983,6 @@
 
     campos.seccion = leerSeccion(plano);
 
-    // Clave de elector: se acepta solo si su estructura y su fecha son válidas.
     var cods = buscarCodigos(lineas, hoy);
     if (cods.clave) {
       var fEt = leerFechaEtiqueta(plano, hoy);
@@ -1046,8 +1007,6 @@
 
   var RANGO = { vacio: 0, revisar: 1, ok: 2 };
 
-  // Une dos lecturas del mismo documento. Por campo gana la de mejor calidad;
-  // si las dos lecturas tienen valor pero no coinciden, el campo queda "por revisar".
   function fusionar(a, b) {
     if (!a) return b;
     if (!b) return a;
@@ -1070,7 +1029,6 @@
     };
   }
 
-  // Lectura suficiente: nombre, edad, calle y sección con algún valor.
   function esSuficiente(r) {
     return ['nombre', 'edad', 'calle', 'seccion'].every(function (k) { return r.campos[k].estado !== 'vacio'; });
   }
@@ -1086,22 +1044,10 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.INEParser = api;
 })(typeof window !== 'undefined' ? window : this);
-
     </script>
 
     <!-- ===== Lector de listas en PDF ===== -->
     <script>
-/* Lector de listas en PDF (tablas con texto digital).
- *
- * Entrada: una lista de páginas; cada página es una lista de fragmentos de texto
- *   { str, x, y, w, h }   (x: izquierda, y: coordenada vertical creciente hacia abajo,
- *                          w: ancho, h: alto de la letra)
- * Salida: una fila por persona con nombre, sección, calle, número, cruzamientos, teléfono...
- *
- * Las columnas se detectan por la posición real del texto en TODAS las filas y se
- * nombran con el encabezado que quede sobre ellas, así que tolera celdas vacías,
- * columnas en otro orden y cruzamientos repartidos en dos subcolumnas.
- */
 (function (root) {
   'use strict';
 
@@ -1115,11 +1061,10 @@
     CAMINO: 'Camino', DIAG: 'Diagonal', CERR: 'Cerrada', CERRADA: 'Cerrada'
   };
 
-  // ---------- texto ----------
   function sinAcentos(s) {
     return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
-  function clave(s) { // texto de encabezado normalizado: MAYÚSCULAS, sin acentos ni signos
+  function clave(s) {
     return sinAcentos(s).toUpperCase().replace(/[^A-Z0-9Ñ ]/g, ' ').replace(/\s+/g, ' ').trim();
   }
   function titulo(s) {
@@ -1132,7 +1077,6 @@
   }
   function limpiar(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
 
-  // ---------- encabezados ----------
   var ENCABEZADOS = [
     ['nombre', /^NOMBRE( COMPLETO)?( Y APELLIDOS?)?$|^NOMBRES?$/],
     ['seccion', /^SEC(C|CION)?$/],
@@ -1154,14 +1098,12 @@
     return '';
   }
 
-  // ---------- geometría ----------
   function mediana(v) {
     if (!v.length) return 8;
     var s = v.slice().sort(function (a, b) { return a - b; });
     return s[Math.floor(s.length / 2)];
   }
 
-  // Agrupa los fragmentos en filas y une los que están pegados (palabras de una misma celda).
   function armarFilas(items) {
     var lim = items
       .map(function (it) {
@@ -1199,7 +1141,6 @@
 
   function solape(a0, a1, b0, b1) { return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0)); }
 
-  // Fila de encabezados: la primera con al menos 3 celdas reconocidas (una de ellas, NOMBRE).
   function buscarEncabezado(filas) {
     for (var i = 0; i < filas.length; i++) {
       var reconocidas = filas[i].celdas.map(function (c) { return { c: c, t: tipoEncabezado(c.s) }; })
@@ -1213,8 +1154,6 @@
     return null;
   }
 
-  // Columnas = tramos del eje X ocupados por texto en las filas de datos; cada tramo toma el
-  // encabezado con el que más se solapa (o el más cercano si ninguno se solapa).
   function armarColumnas(datos, encab) {
     var tramos = [];
     datos.forEach(function (f) { f.celdas.forEach(function (c) { tramos.push([c.x, c.xe]); }); });
@@ -1245,7 +1184,6 @@
     return cols;
   }
 
-  // ---------- normalización de campos ----------
   function normTelefono(s) {
     var d = String(s || '').replace(/\D/g, '');
     if (d.length === 13 && d.indexOf('521') === 0) d = d.slice(3);
@@ -1324,8 +1262,6 @@
     return { faltan: faltan, avisos: avisos };
   }
 
-  // ---------- API ----------
-  // paginas: [[{str,x,y,w,h}, ...], ...]
   function extraer(paginas) {
     var salida = { personas: [], titulo: '', aviso: '', columnas: [] };
     var colsPrevias = null, seccionEncabezado = '';
@@ -1337,7 +1273,6 @@
       var datos, cols;
 
       if (enc) {
-        // Texto sobre la tabla: título de la lista y sección escrita en el encabezado.
         var previo = filas.slice(0, enc.indice).map(function (f) { return f.celdas.map(function (c) { return c.s; }).join(' '); });
         if (!salida.titulo && previo.length) {
           var tit = previo.join(' ').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -1379,7 +1314,6 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ListaPDF = api;
 })(typeof window !== 'undefined' ? window : this);
-
     </script>
 
     <script type="module">
@@ -1415,7 +1349,6 @@
         let mediaStreamVivo = null;
         let workerOCR = null;
 
-        // Escapa texto antes de mostrarlo con innerHTML (evita que un registro ejecute código).
         function esc(v) {
             return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
                 { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -1439,16 +1372,12 @@
             window.__toastTimer = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), tipo === 'success' ? 3000 : 5000);
         };
 
-        // ==========================================
-        // CONTRASEÑAS (como en la versión original: texto simple en la colección "usuarios")
-        // ==========================================
         function aHex(buf) { return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join(''); }
         async function credencialesNuevas(pass) { return { password: pass }; }
         async function verificarPass(usuario, pass) {
             const u = listaUsuariosCloud[usuario];
             if (!u) return false;
             if (typeof u.password === 'string') return u.password === pass;
-            // Cuenta convertida a hash por la versión anterior: se sigue aceptando.
             if (u.hash && u.salt && window.crypto && crypto.subtle) {
                 const h = aHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(u.salt + ':' + pass)));
                 return h === u.hash;
@@ -1456,9 +1385,6 @@
             return false;
         }
 
-        // ==========================================
-        // SESIÓN Y USUARIOS
-        // ==========================================
         onSnapshot(collection(db, 'usuarios'), (snapshot) => {
             listaUsuariosCloud = {};
             snapshot.forEach((d) => { listaUsuariosCloud[d.id] = d.data(); });
@@ -1593,9 +1519,6 @@
         window.abrirModalColaboradores = function () { if (!esAdmin()) return; pintarColaboradores(); $('modalColaboradores').classList.remove('hidden'); };
         window.cerrarModalColaboradores = function () { $('modalColaboradores').classList.add('hidden'); };
 
-        // ==========================================
-        // LECTURA DE LA INE EN EL TELÉFONO (OCR local)
-        // ==========================================
         const CAMPOS_INE = ['nombre', 'claveElector', 'edad', 'calle', 'numero', 'cruzamientos', 'seccion'];
 
         function marcarCampo(id, estado) {
@@ -1627,7 +1550,7 @@
 
         async function cargarImagen(origen) {
             if (window.createImageBitmap) {
-                try { return await createImageBitmap(origen); } catch (e) { /* se usa el método alterno */ }
+                try { return await createImageBitmap(origen); } catch (e) { }
             }
             return await new Promise((resolve, reject) => {
                 const url = URL.createObjectURL(origen);
@@ -1638,8 +1561,6 @@
             });
         }
 
-        // Gris + estiramiento de contraste (y, opcionalmente, blanco y negro por Otsu).
-        // desdeX: fracción izquierda que se recorta (0.3 = se ignora el 30 % izquierdo, donde va la foto).
         function prepararLienzo(img, binarizar, desdeX) {
             const w0 = img.width || img.naturalWidth, h0 = img.height || img.naturalHeight;
             const sx = Math.round(w0 * (desdeX || 0)), sw = w0 - sx;
@@ -1730,7 +1651,6 @@
             let img = null, lienzo = null;
             try {
                 img = await cargarImagen(origen);
-                // Se prueban varias lecturas hasta tener nombre, edad, calle y sección.
                 const pasadas = [
                     { txt: 'Leyendo credencial...', bin: false, x: 0, psm: 6 },
                     { txt: 'Leyendo solo la zona de texto...', bin: false, x: 0.3, psm: 6 },
@@ -1756,7 +1676,6 @@
                 console.error(err);
                 mostrarToast('No se pudo leer la INE: ' + (err.message || 'error desconocido'), 'error');
             } finally {
-                // La imagen se descarta: no se guarda ni se envía a ningún lado.
                 if (lienzo) { lienzo.width = 0; lienzo.height = 0; }
                 if (img && img.close) img.close();
                 img = null; lienzo = null;
@@ -1792,7 +1711,7 @@
                 return;
             }
             video.srcObject = mediaStreamVivo;
-            try { await video.play(); } catch (e) { /* algunos navegadores reproducen solos */ }
+            try { await video.play(); } catch (e) { }
         };
 
         window.cerrarCamaraEnVivo = function () {
@@ -1811,9 +1730,6 @@
             c.toBlob((blob) => { c.width = 0; c.height = 0; if (blob) leerINE(blob); }, 'image/jpeg', 0.92);
         };
 
-        // ==========================================
-        // REGISTROS
-        // ==========================================
         function actualizarTiempo() {
             const ahora = new Date();
             $('fechaRegistro').value = ahora.toLocaleDateString('es-MX');
@@ -1877,7 +1793,6 @@
 
             if (v.claveElector && v.claveElector.length !== 18) { mostrarToast('La clave de elector debe tener 18 caracteres (o déjala vacía).', 'error'); return; }
 
-            // Duplicados: se bloquean (por clave de elector o por nombre), como en la versión original.
             const nombreNorm = normalizarNombre(v.nombre);
             if (v.claveElector) {
                 const mismaClave = listaGlobalRegistros.find((r) => r.claveElector === v.claveElector);
@@ -1905,8 +1820,6 @@
                 timestamp: serverTimestamp()
             };
 
-            // Con conexión intermitente en campo, addDoc no termina hasta sincronizar:
-            // el formulario se limpia al instante y, si el guardado falla, se restauran los datos.
             addDoc(coleccionRef, nuevoDato).catch((err) => {
                 console.error(err);
                 restaurarFormulario(v);
@@ -2012,9 +1925,6 @@
             catch (err) { console.error(err); mostrarToast('No se pudo eliminar.', 'error'); }
         });
 
-        // ==========================================
-        // EDITAR REGISTROS YA GUARDADOS
-        // ==========================================
         let editandoId = null;
 
         function puedeEditar(reg) { return !!usuarioActual && (esAdmin() || reg.registradoPor === usuarioActual); }
@@ -2080,7 +1990,6 @@
                 editadoPor: usuarioActual,
                 fechaEdicion: new Date().toLocaleString('es-MX')
             };
-            // Igual que al guardar: con mala señal la nube confirma después; si falla, se avisa.
             updateDoc(doc(db, 'registros', id), cambios).catch((err) => {
                 console.error(err);
                 mostrarToast('No se pudieron guardar los cambios de "' + nombre + '". Intenta de nuevo.', 'error');
@@ -2089,9 +1998,6 @@
             mostrarToast(navigator.onLine ? 'Cambios guardados.' : 'Cambios guardados en el teléfono; se enviarán al volver la conexión.');
         });
 
-        // ==========================================
-        // IMPORTAR LISTAS DESDE PDF (tablas con texto digital, se lee en el navegador)
-        // ==========================================
         const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
         const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
         let filasImport = [];
@@ -2145,7 +2051,6 @@
             actualizarBotonImport();
         }
 
-        // Al escribir en la tabla se actualiza la persona y se vuelve a revisar sin perder el cursor.
         function editarCeldaImport(i, campo, valor) {
             const f = filasImport[i], p = f.persona;
             if (campo === 'edad') { const n = parseInt(valor, 10); p.edad = n >= 18 && n <= 120 ? n : ''; }
@@ -2249,7 +2154,6 @@
             const marcadas = filasImport.filter((f) => f.marcada && !f.duplicada);
             const sinNombre = marcadas.filter((f) => !f.persona.nombre);
             if (sinNombre.length) { mostrarToast('Hay filas marcadas sin nombre. Escríbelo o desmárcalas.', 'error'); return; }
-            // Se revisa otra vez contra la nube y contra las demás filas, por si alguien registró a la persona mientras tanto.
             const vistos = new Set();
             const elegidas = marcadas.filter((f) => {
                 const k = normalizarNombre(f.persona.nombre);
@@ -2291,15 +2195,11 @@
                 + (omitidas ? ' (' + omitidas + ' omitidos por repetidos)' : ''));
         };
 
-        // ==========================================
-        // EXPORTACIÓN (solo Admin): todas las columnas
-        // ==========================================
         const COLUMNAS = [
             ['Nombre', 'nombre'], ['Clave de elector', 'claveElector'], ['Edad', 'edad'], ['Categoría', 'categoria'], ['Sección', 'seccion'],
             ['Calle', 'calle'], ['Número', 'numero'], ['Cruzamientos', 'cruzamientos'], ['Teléfono', 'telefono'],
             ['Facebook', 'facebook'], ['Fecha', 'fecha'], ['Hora', 'hora'], ['Registrado por', 'registradoPor']
         ];
-        // Evita que Excel interprete texto como fórmula (=, +, -, @).
         function seguro(v) {
             const s = v == null ? '' : String(v);
             return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
@@ -2323,7 +2223,7 @@
             const celda = (v) => '"' + seguro(v).replace(/"/g, '""') + '"';
             const lineas = [COLUMNAS.map((c) => celda(c[0])).join(',')]
                 .concat(listaGlobalRegistros.map((r) => COLUMNAS.map((c) => celda(r[c[1]])).join(',')));
-            const blob = new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob(['\uFEFF' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = 'Activismo_2027.csv';
@@ -2331,9 +2231,6 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         };
 
-        // ==========================================
-        // INFORME PDF (respeta la categoría y la búsqueda que estén en pantalla)
-        // ==========================================
         const COLS_INFORME = ['#', 'Nombre', 'Edad', 'Categoría', 'Sección', 'Calle', 'Núm.', 'Cruzamientos', 'Teléfono', 'Registrado por', 'Fecha'];
 
         function datosInforme() {
@@ -2405,7 +2302,6 @@
             doc.save(nombreArchivoInforme());
         }
 
-        // Respaldo si la librería de PDF no se pudo descargar: hoja lista para "Guardar como PDF".
         function informeImprimible(d) {
             const fila = (f) => '<tr>' + f.map((c) => '<td>' + esc(c) + '</td>').join('') + '</tr>';
             const resumen = (t, filas) => '<table class="r"><thead><tr><th>' + t + '</th><th>Registros</th></tr></thead><tbody>' + filas.map((f) => fila(f)).join('') + '</tbody></table>';
@@ -2420,7 +2316,7 @@
             if (!w) { mostrarToast('El navegador bloqueó la ventana del informe. Permite las ventanas emergentes e intenta de nuevo.', 'error'); return; }
             w.document.open(); w.document.write(html); w.document.close();
             w.focus();
-            setTimeout(() => { try { w.print(); } catch (e) { /* el usuario puede imprimir manualmente */ } }, 500);
+            setTimeout(() => { try { w.print(); } catch (e) { } }, 500);
         }
 
         window.exportarInforme = function () {
@@ -2438,50 +2334,83 @@
 
         actualizarPermisosUI();
     </script>
-<script>
-(function(){
-  var dp=null, esIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  var standalone=window.matchMedia('(display-mode: standalone)').matches||window.matchMedia('(display-mode: fullscreen)').matches||window.matchMedia('(display-mode: minimal-ui)').matches||navigator.standalone;
-  function mostrar(v){var b=document.getElementById('btnInstalar'); if(b) b.style.display=v?'flex':'none';}
-  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;mostrar(true);});
-  window.addEventListener('appinstalled',function(){dp=null;mostrar(false);});
-  function instrucciones(){
-    var ua=navigator.userAgent, ios=esIOS||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
-    var android=/android/i.test(ua), mov=android||ios;
-    if(ios){
-      if(/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua)) return 'Toca el botón <b>Compartir</b> (cuadro con flecha) y elige <b>"Añadir a pantalla de inicio"</b>. Si no aparece la opción, abre esta página en <b>Safari</b> y repite el paso.';
-      return 'En <b>Safari</b> toca <b>Compartir</b> (cuadro con flecha) y luego <b>"Añadir a pantalla de inicio"</b>.';
-    }
-    if(/SamsungBrowser/.test(ua)) return 'Toca el menú <b>☰</b> y elige <b>"Añadir página a"</b> → <b>"Pantalla de inicio"</b> (o el icono de instalar en la barra de direcciones).';
-    if(/Firefox/.test(ua)&&android) return 'Toca el menú <b>⋮</b> y elige <b>"Instalar"</b> o <b>"Añadir a pantalla de inicio"</b>.';
-    if(/Firefox/.test(ua)) return 'Firefox de computadora no instala apps web. Abre esta página en <b>Chrome</b> o <b>Edge</b> y usa el icono de instalar en la barra de direcciones.';
-    if(/OPR|Opera/.test(ua)&&mov) return 'Toca el menú <b>⋮</b> y elige <b>"Añadir a pantalla de inicio"</b>.';
-    if(mov) return 'Toca el menú <b>⋮</b> del navegador y elige <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>. Si no aparece, abre esta página en <b>Chrome</b>.';
-    if(/Safari/.test(ua)&&!/Chrome|Chromium/.test(ua)) return 'En Safari (Mac): menú <b>Archivo</b> → <b>"Añadir al Dock"</b>.';
-    return 'Busca el icono de <b>instalar</b> (monitor con flecha) en la barra de direcciones, o abre el menú <b>⋮</b> → <b>"Instalar Activismo 2027"</b>.';
-  }
-  window.instalarApp=async function(){
-    if(dp){dp.prompt(); await dp.userChoice; dp=null; mostrar(false);}
-    else {
-      document.getElementById('modalIOSTxt').innerHTML = instrucciones();
-      document.getElementById('modalIOS').style.display='flex';
-    }
-  };
-  document.addEventListener('DOMContentLoaded',function(){ if(!standalone) mostrar(true); });
-  var reg=null;
-  function aviso(){document.getElementById('bannerUpd').style.display='flex';}
-  window.actualizarApp=function(){ if(reg&&reg.waiting) reg.waiting.postMessage('SKIP_WAITING'); };
-  if('serviceWorker' in navigator){
-    window.addEventListener('load',function(){
-      navigator.serviceWorker.register('sw.js').then(function(r){
-        reg=r;
-        if(r.waiting&&navigator.serviceWorker.controller) aviso();
-        r.addEventListener('updatefound',function(){var w=r.installing; w.addEventListener('statechange',function(){ if(w.state==='installed'&&navigator.serviceWorker.controller) aviso(); });});
-      }).catch(function(){});
-      var rec=false; navigator.serviceWorker.addEventListener('controllerchange',function(){ if(rec) return; rec=true; location.reload(); });
-    });
-  }
-})();
-</script>
+
+    <!-- ===== PWA e Instalación ===== -->
+    <script>
+    (function(){
+      var dp = null;
+      var esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+      function mostrarBotones(visible) {
+        ['btnInstalar', 'btnInstalarLogin'].forEach(function(id) {
+          var b = document.getElementById(id);
+          if (b) b.style.display = visible ? 'flex' : 'none';
+        });
+      }
+
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        dp = e;
+        if (!standalone) mostrarBotones(true);
+      });
+
+      window.addEventListener('appinstalled', function() {
+        dp = null;
+        mostrarBotones(false);
+        if (window.mostrarToast) window.mostrarToast('¡Aplicación instalada correctamente!');
+      });
+
+      window.instalarApp = async function() {
+        if (dp) {
+          dp.prompt();
+          var choice = await dp.userChoice;
+          if (choice && choice.outcome === 'accepted') {
+            dp = null;
+            mostrarBotones(false);
+          }
+        } else {
+          document.getElementById('modalIOSTxt').innerHTML = esIOS
+            ? 'En <b>Safari</b> toca el botón <b>Compartir</b> y luego selecciona <b>"Añadir a pantalla de inicio"</b>.'
+            : 'Abre el menú de tu navegador (<b>⋮</b> o <b>☰</b> arriba a la derecha) y toca <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>.';
+          document.getElementById('modalIOS').style.display = 'flex';
+        }
+      };
+
+      if (!standalone) {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function() { mostrarBotones(true); });
+        } else {
+          mostrarBotones(true);
+        }
+      }
+
+      var reg = null;
+      function aviso() { document.getElementById('bannerUpd').style.display = 'flex'; }
+      window.actualizarApp = function() { if (reg && reg.waiting) reg.waiting.postMessage('SKIP_WAITING'); };
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('./sw.js').then(function(r) {
+            reg = r;
+            if (r.waiting && navigator.serviceWorker.controller) aviso();
+            r.addEventListener('updatefound', function() {
+              var w = r.installing;
+              w.addEventListener('statechange', function() {
+                if (w.state === 'installed' && navigator.serviceWorker.controller) aviso();
+              });
+            });
+          }).catch(function(err) { console.error('Error SW:', err); });
+
+          var rec = false;
+          navigator.serviceWorker.addEventListener('controllerchange', function() {
+            if (rec) return;
+            rec = true;
+            location.reload();
+          });
+        });
+      }
+    })();
+    </script>
 </body>
 </html>
