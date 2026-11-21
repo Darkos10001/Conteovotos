@@ -3,17 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#b91c1c">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <title>Activismo 2027 • Control y Estatus de Votos</title>
+    <title>Activismo 2027</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#b91c1c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Activismo">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- jsPDF y AutoTable para generar el informe en PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Informe PDF -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+    <!-- OCR que corre dentro del teléfono: la foto de la INE no sale del dispositivo -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans text-slate-800">
 
@@ -23,7 +28,7 @@
             <div class="text-center mb-6">
                 <img src="https://suresteinforma.com/wp-content/uploads/2023/03/PRI.jpg" alt="Activismo 2027 Logo" class="h-20 mx-auto mb-3 object-contain rounded-xl shadow-sm">
                 <h2 class="text-2xl font-black text-red-700 tracking-tight">Activismo 2027</h2>
-                <p class="text-xs text-slate-500 mt-1">Módulo de Control de Votación</p>
+                <p class="text-xs text-slate-500 mt-1">Ingresa tus credenciales en la nube</p>
             </div>
 
             <form id="loginForm" class="space-y-4">
@@ -51,9 +56,167 @@
                 </div>
 
                 <button type="submit" id="btnLogin" class="w-full mt-2 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-to-bracket"></i> Entrar al Módulo de Votos
+                    <i class="fa-solid fa-right-to-bracket"></i> Entrar al Sistema
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE CÁMARA -->
+    <div id="modalCamaraEnVivo" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 flex flex-col items-center">
+            <div class="w-full flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-id-card text-red-600"></i> Escáner de INE (en tu teléfono)
+                </h3>
+                <button onclick="cerrarCamaraEnVivo()" class="text-slate-400 hover:text-slate-600 text-base" aria-label="Cerrar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 text-center mb-3">Coloca el <b>frente</b> de la credencial dentro del marco, recta, con buena luz y sin reflejos.</p>
+
+            <div class="w-full relative rounded-xl overflow-hidden border-2 border-red-600 bg-black h-64 flex items-center justify-center">
+                <video id="videoEnVivo" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                <div class="absolute inset-0 border-2 border-dashed border-emerald-400/80 m-6 rounded-lg pointer-events-none flex items-end justify-center pb-2">
+                    <span class="bg-black/70 text-emerald-400 text-[11px] font-bold px-3 py-1 rounded-full">Ajusta la INE al marco</span>
+                </div>
+            </div>
+
+            <div class="w-full mt-4">
+                <button onclick="capturarYLeer()" class="w-full bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-camera"></i> Capturar y leer
+                </button>
+            </div>
+
+            <button onclick="cerrarCamaraEnVivo()" class="mt-3 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE GESTIÓN DE COLABORADORES -->
+    <div id="modalColaboradores" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-users-gear text-red-600"></i> Gestión de Cuentas en la Nube
+                </h3>
+                <button onclick="cerrarModalColaboradores()" class="text-slate-400 hover:text-slate-600 text-sm" aria-label="Cerrar">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto flex-grow space-y-3 pr-1" id="listaColaboradoresCuerpo"></div>
+
+            <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                <button onclick="cerrarModalColaboradores()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold py-2 px-4 rounded-xl transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR REGISTRO GUARDADO -->
+    <div id="modalEditar" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+        <form id="editarForm" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5 border border-slate-200 flex flex-col max-h-[92vh]" novalidate>
+            <div class="flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-pen-to-square text-red-600"></i> Editar registro</h3>
+                <button type="button" onclick="cerrarEditar()" class="text-slate-400 hover:text-slate-600" aria-label="Cerrar"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="overflow-y-auto space-y-3 pr-1">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Nombre completo *</label>
+                    <input type="text" id="edNombre" autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Clave de elector</label>
+                    <input type="text" id="edClave" maxlength="18" autocomplete="off" autocapitalize="characters" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-red-600" placeholder="18 caracteres">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Edad</label>
+                        <input type="number" id="edEdad" min="18" max="120" inputmode="numeric" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Sección</label>
+                        <input type="text" id="edSeccion" inputmode="numeric" autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Calle</label>
+                        <input type="text" id="edCalle" autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Número</label>
+                        <input type="text" id="edNumero" autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Cruzamientos</label>
+                    <input type="text" id="edCruzamientos" autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Teléfono *</label>
+                        <input type="tel" id="edTelefono" inputmode="tel" autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Facebook</label>
+                        <input type="text" id="edFacebook" autocomplete="off" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                    </div>
+                </div>
+                <p id="edInfo" class="text-[11px] text-slate-500"></p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex gap-2 justify-end">
+                <button type="button" onclick="cerrarEditar()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition">Cancelar</button>
+                <button type="submit" class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-2.5 px-5 rounded-xl shadow transition flex items-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- MODAL: IMPORTAR LISTA DESDE PDF -->
+    <div id="modalImportar" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-5 border border-slate-200 flex flex-col max-h-[92vh]">
+            <div class="flex justify-between items-start gap-3 pb-3 mb-3 border-b border-slate-100">
+                <div>
+                    <h3 class="text-base font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-file-pdf text-red-600"></i> Importar lista desde PDF</h3>
+                    <p id="importTitulo" class="text-[11px] text-slate-500 mt-0.5"></p>
+                </div>
+                <button onclick="cerrarImportar()" class="text-slate-400 hover:text-slate-600" aria-label="Cerrar"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <p id="importEstado" class="text-xs text-slate-600 mb-3"></p>
+
+            <div id="importTablaWrap" class="hidden overflow-auto flex-grow rounded-xl border border-slate-200">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead class="bg-slate-100 text-slate-700 uppercase text-[10px] font-bold tracking-wider sticky top-0">
+                        <tr>
+                            <th class="p-2"><input type="checkbox" id="importTodos" class="h-4 w-4 accent-red-700" aria-label="Seleccionar todos"></th>
+                            <th class="p-2">Nombre</th>
+                            <th class="p-2">Edad</th>
+                            <th class="p-2">Sección</th>
+                            <th class="p-2">Calle</th>
+                            <th class="p-2">Núm.</th>
+                            <th class="p-2">Cruzamientos</th>
+                            <th class="p-2">Teléfono</th>
+                            <th class="p-2">Estado</th>
+                            <th class="p-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="importCuerpo" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+
+            <p class="text-[11px] text-slate-500 mt-3">Puedes <b>corregir cualquier dato</b> escribiendo directamente en la tabla. Los registros sin edad se guardan como "Sin clasificar". Con <b>Al formulario</b> pasas una fila al formulario para completarla ahí.</p>
+
+            <div class="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-2">
+                <button onclick="cerrarImportar()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition">Cancelar</button>
+                <button id="btnGuardarImport" onclick="guardarImportados()" class="bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white text-xs font-bold py-2.5 px-5 rounded-xl shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> <span id="textoGuardarImport">Guardar seleccionados</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -66,17 +229,17 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tight text-white">Activismo 2027</h1>
-                    <p class="text-xs text-red-100 font-medium">Control de Votación y Estatus en Tiempo Real</p>
+                    <p class="text-xs text-red-100 font-medium">Plataforma de Control de Registros</p>
                 </div>
             </div>
 
             <div class="flex items-center gap-3">
                 <div id="liveClock" class="bg-red-900/60 px-3 py-1.5 rounded-lg text-sm font-mono tracking-wider border border-red-500/30">--:--:--</div>
-                <span id="currentUserBadge" class="text-xs bg-red-800 text-white font-semibold px-3 py-1.5 rounded-xl border border-red-600">Invitado</span>
-                <button id="btnInstalarApp" type="button" class="hidden bg-white hover:bg-red-50 text-red-800 text-xs font-bold py-2 px-3 rounded-xl shadow transition items-center gap-1.5" aria-label="Instalar aplicación">
-                    <i class="fa-solid fa-download"></i> Instalar
+                <button id="btnVerColaboradores" onclick="abrirModalColaboradores()" class="hidden bg-white hover:bg-slate-100 text-red-700 text-xs font-bold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-users"></i> Colaboradores
                 </button>
-                <button onclick="cerrarSesion()" class="bg-slate-900 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
+                <button id="btnInstalar" onclick="instalarApp()" style="display:none" class="bg-red-700 hover:bg-red-800 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition items-center gap-1.5"><i class="fa-solid fa-download"></i> Instalar</button>
+<button onclick="cerrarSesion()" class="bg-slate-900 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
                     <i class="fa-solid fa-power-off"></i> Salir
                 </button>
             </div>
@@ -84,93 +247,256 @@
     </header>
 
     <!-- CONTENIDO PRINCIPAL -->
-    <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow flex flex-col gap-6">
+    <main class="max-w-7xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
 
-        <!-- TARJETAS DE ESTADÍSTICAS RÁPIDAS -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <p class="text-xs uppercase font-bold text-slate-400">Total Registrados</p>
-                    <p id="statTotal" class="text-2xl font-black text-slate-800 mt-1">0</p>
-                </div>
-                <div class="bg-slate-100 p-3 rounded-xl text-slate-600"><i class="fa-solid fa-users text-xl"></i></div>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <p class="text-xs uppercase font-bold text-emerald-600">Ciudadanos que Ya Votaron</p>
-                    <p id="statVotaron" class="text-2xl font-black text-emerald-600 mt-1">0</p>
-                </div>
-                <div class="bg-emerald-50 p-3 rounded-xl text-emerald-600"><i class="fa-solid fa-square-check text-xl"></i></div>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <p class="text-xs uppercase font-bold text-amber-600">Pendientes por Votar</p>
-                    <p id="statFaltan" class="text-2xl font-black text-amber-600 mt-1">0</p>
-                </div>
-                <div class="bg-amber-50 p-3 rounded-xl text-amber-600"><i class="fa-solid fa-clock text-xl"></i></div>
-            </div>
-        </div>
-
-        <!-- SECCIÓN DE TABLA Y FILTROS -->
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col flex-grow">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
-                <div>
+        <!-- FORMULARIO -->
+        <section class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
                     <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-box-ballot text-red-600"></i> Listado General y Seguimiento de Voto
+                        <i class="fa-solid fa-user-plus text-red-600"></i> Nuevo Registro
                     </h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Filtra por sección o estatus y controla la votación en tiempo real</p>
+                    <span id="currentUserBadge" class="text-xs bg-red-50 text-red-700 font-semibold px-2.5 py-1 rounded-full border border-red-100">Invitado</span>
                 </div>
 
-                <div id="botonesExportar" class="hidden items-center gap-2 w-full sm:w-auto">
-                    <button onclick="exportarPDFVotacion()" class="bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition flex items-center gap-2 whitespace-nowrap">
-                        <i class="fa-solid fa-file-pdf text-sm"></i> Generar Informe PDF
+                <!-- ESCANEO -->
+                <div class="mb-4 space-y-2">
+                    <button type="button" onclick="abrirCamaraEnVivo()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-id-card text-red-400"></i> Escanear INE (cámara en vivo)
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition text-center cursor-pointer flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-camera text-slate-500"></i> Cámara nativa
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="procesarArchivo(event)">
+                        </label>
+
+                        <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition text-center cursor-pointer flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-image text-slate-500"></i> Subir de galería
+                            <input type="file" accept="image/*" class="hidden" onchange="procesarArchivo(event)">
+                        </label>
+                    </div>
+                </div>
+
+                <label class="mb-4 w-full bg-white hover:bg-slate-50 text-red-700 text-xs font-bold py-3 px-4 rounded-xl border-2 border-dashed border-red-300 transition cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-pdf"></i> Importar lista desde PDF
+                    <input type="file" accept="application/pdf,.pdf" class="hidden" onchange="procesarPDF(event)">
+                </label>
+
+                <div id="indicadorProceso" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 text-center">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> <span id="textoProceso">Leyendo credencial...</span>
+                    <div class="mt-2 h-1.5 bg-red-100 rounded-full overflow-hidden"><div id="barraProceso" class="h-full bg-red-600 transition-all" style="width:0%"></div></div>
+                </div>
+
+                <div id="resultadoLectura" class="hidden mb-4 p-3 rounded-xl border text-xs leading-snug"></div>
+
+                <form id="registroForm" class="space-y-4" novalidate>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nombre Completo *</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" id="nombre" required autocomplete="off" class="campo-ine w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. Juan Pérez">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Clave de Elector</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-id-card"></i></span>
+                            <input type="text" id="claveElector" maxlength="18" autocomplete="off" autocapitalize="characters" class="campo-ine w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="18 caracteres">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-1">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Edad *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-cake-candles"></i></span>
+                                <input type="number" id="edad" min="18" max="120" required inputmode="numeric" class="campo-ine w-full pl-9 pr-2 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="18">
+                            </div>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Sección *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-map-pin"></i></span>
+                                <input type="text" id="seccion" required inputmode="numeric" autocomplete="off" class="campo-ine w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. 0123">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Calle *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-road"></i></span>
+                                <input type="text" id="calle" required autocomplete="off" class="campo-ine w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. Calle 20">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Cruzamientos *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-code-merge"></i></span>
+                                <input type="text" id="cruzamientos" required autocomplete="off" class="campo-ine w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. 15 y 17">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Número *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-hashtag"></i></span>
+                                <input type="text" id="numero" required autocomplete="off" class="campo-ine w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. 452">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Teléfono *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-phone"></i></span>
+                                <input type="tel" id="telefono" required inputmode="tel" autocomplete="off" class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. 9861234567">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Facebook</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-brands fa-facebook"></i></span>
+                            <input type="text" id="facebook" autocomplete="off" class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Perfil o nombre">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Fecha</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-calendar"></i></span>
+                                <input type="text" id="fechaRegistro" readonly class="w-full pl-10 pr-3.5 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-sm text-slate-600 cursor-not-allowed">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Hora</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-clock"></i></span>
+                                <input type="text" id="horaRegistro" readonly class="w-full pl-10 pr-3.5 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-sm text-slate-600 cursor-not-allowed">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnGuardar" class="w-full mt-2 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Registro
+                    </button>
+                </form>
+            </div>
+
+            <!-- Panel de usuarios -->
+            <div class="mt-6 pt-4 border-t border-slate-100 space-y-4">
+                <details id="sectionCrearUsuario" class="hidden group">
+                    <summary class="text-xs font-bold text-red-700 cursor-pointer flex items-center gap-1.5 list-none">
+                        <i class="fa-solid fa-user-plus"></i> Registrar nuevo usuario colaborador <i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i>
+                    </summary>
+                    <form id="crearUsuarioForm" class="mt-3 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Nombre de Usuario</label>
+                            <input type="text" id="nuevoUser" required autocomplete="off" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-600" placeholder="Ej. colaborador2">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Contraseña</label>
+                            <div class="relative">
+                                <input type="password" id="nuevoPass" required autocomplete="new-password" class="w-full px-3 py-2 pr-8 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-600" placeholder="••••••••">
+                                <button type="button" onclick="togglePassword('nuevoPass', 'eyeIconNuevo')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none text-xs">
+                                    <i id="eyeIconNuevo" class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-user-check"></i> Crear Cuenta
+                        </button>
+                    </form>
+                </details>
+
+                <details class="group">
+                    <summary class="text-xs font-bold text-slate-600 cursor-pointer flex items-center gap-1.5 list-none">
+                        <i class="fa-solid fa-key"></i> Cambiar mi contraseña <i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i>
+                    </summary>
+                    <form id="cambiarPassForm" class="mt-3 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Nueva Contraseña</label>
+                            <div class="relative">
+                                <input type="password" id="passActualizar" required autocomplete="new-password" class="w-full px-3 py-2 pr-8 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-red-600" placeholder="••••••••">
+                                <button type="button" onclick="togglePassword('passActualizar', 'eyeIconActualizar')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none text-xs">
+                                    <i id="eyeIconActualizar" class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-floppy-disk"></i> Actualizar Clave
+                        </button>
+                    </form>
+                </details>
+            </div>
+        </section>
+
+        <!-- TABLA -->
+        <section class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-red-600"></i> Registros Almacenados
+                </h2>
+
+                <div id="botonesExportar" class="hidden flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <button onclick="exportarExcel()" class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition flex items-center gap-2 whitespace-nowrap">
+                        <i class="fa-solid fa-file-excel text-sm"></i> Exportar Excel
+                    </button>
+                    <button onclick="exportarCSV()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-file-csv"></i> Access (CSV)
+                    </button>
+                    <button onclick="exportarInforme()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-file-pdf"></i> Informe PDF
                     </button>
                 </div>
             </div>
 
-            <!-- FILTROS, SELECTOR DE SECCIÓN Y BUSCADOR -->
             <div class="mb-4 space-y-3">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <!-- Filtro por estatus de voto -->
-                    <div class="flex gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold">
-                        <button onclick="filtrarVoto('Todos')" id="filtroVotoTodos" class="flex-1 py-2 rounded-lg bg-white shadow text-red-700 border border-slate-200 font-bold text-center">Todos</button>
-                        <button onclick="filtrarVoto('Votaron')" id="filtroVotoSi" class="flex-1 py-2 rounded-lg text-slate-600 hover:bg-white/50 text-center">Ya Votaron</button>
-                        <button onclick="filtrarVoto('Pendientes')" id="filtroVotoNo" class="flex-1 py-2 rounded-lg text-slate-600 hover:bg-white/50 text-center">Pendientes</button>
-                    </div>
-
-                    <!-- Selector de Número de Sección -->
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-map-pin"></i></span>
-                        <select id="filtroSeccion" onchange="filtrarRegistros()" class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition cursor-pointer">
-                            <option value="Todas">Todas las secciones</option>
-                        </select>
-                    </div>
+                <div class="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold">
+                    <button onclick="filtrarCategoria('Todos')" id="tabTodos" class="flex-1 py-2 px-3 rounded-lg bg-white shadow text-red-700 border border-slate-200 transition text-center font-bold">
+                        Todos <span id="cntTodos" class="ml-1 bg-red-100 text-red-800 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button onclick="filtrarCategoria('Jóvenes')" id="tabJovenes" class="flex-1 py-2 px-3 rounded-lg text-slate-600 hover:bg-white/50 transition text-center">
+                        Jóvenes (18-29) <span id="cntJovenes" class="ml-1 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button onclick="filtrarCategoria('Adultos')" id="tabAdultos" class="flex-1 py-2 px-3 rounded-lg text-slate-600 hover:bg-white/50 transition text-center">
+                        Adultos (30-59) <span id="cntAdultos" class="ml-1 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button onclick="filtrarCategoria('Adultos Mayores')" id="tabMayores" class="flex-1 py-2 px-3 rounded-lg text-slate-600 hover:bg-white/50 transition text-center">
+                        Mayores (60+) <span id="cntMayores" class="ml-1 bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
                 </div>
 
-                <!-- Buscador por texto -->
                 <div class="relative">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-search"></i></span>
-                    <input type="text" id="buscador" oninput="filtrarRegistros()" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Buscar por nombre, clave, calle o teléfono...">
+                    <input type="text" id="buscador" oninput="filtrarRegistros()" class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Buscar por nombre, clave, calle, sección o teléfono...">
                 </div>
             </div>
 
-            <!-- TABLA -->
-            <div class="overflow-x-auto flex-grow rounded-xl border border-slate-200 max-h-[500px]">
+            <div class="overflow-x-auto flex-grow rounded-xl border border-slate-200 max-h-[480px]">
                 <table id="tablaRegistros" class="w-full text-left border-collapse">
                     <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-bold tracking-wider sticky top-0 z-10">
                         <tr>
-                            <th class="p-3">Nombre Completo</th>
-                            <th class="p-3">Ubicación / Sección</th>
-                            <th class="p-3">Teléfono</th>
-                            <th class="p-3 text-center">Estatus de Voto</th>
-                            <th class="p-3 text-center">Acción Rápida</th>
+                            <th class="p-3">Nombre</th>
+                            <th class="p-3">Edad / Categoría</th>
+                            <th class="p-3">Dirección</th>
+                            <th class="p-3">Contacto</th>
+                            <th class="p-3">Fecha</th>
+                            <th class="p-3">Registrado por</th>
+                            <th class="p-3 text-center">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tablaCuerpo" class="divide-y divide-slate-100 text-sm">
                         <tr>
-                            <td colspan="5" class="text-center py-10 text-slate-400">
+                            <td colspan="7" class="text-center py-10 text-slate-400">
                                 <i class="fa-solid fa-spinner fa-spin text-2xl text-red-600 mb-2"></i>
-                                <p>Cargando datos del servidor...</p>
+                                <p>Inicia sesión para ver los datos</p>
                             </td>
                         </tr>
                     </tbody>
@@ -178,52 +504,886 @@
             </div>
 
             <div class="mt-4 flex justify-between items-center text-xs text-slate-500">
-                <span id="totalRegistros">Total: 0</span>
-                <span id="estadoConexion" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Conectado a la Nube</span>
+                <span id="totalRegistros">Total de registros: 0</span>
+                <span id="estadoConexion" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Conectado</span>
             </div>
         </section>
     </main>
 
     <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        Activismo 2027 • Módulo Independiente de Control de Votación
+        Activismo 2027 • Plataforma de Clasificación y Control de Datos
     </footer>
 
-    <!-- Notificación Toast -->
-    <div id="toast" class="fixed bottom-5 right-5 left-5 sm:left-auto transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[60]">
+    <div id="bannerUpd" style="display:none" class="fixed bottom-0 inset-x-0 z-[100] bg-slate-900 text-white text-sm p-3 items-center justify-between gap-3"><span>Hay una versión nueva disponible.</span><button onclick="actualizarApp()" class="bg-red-600 px-3 py-1.5 rounded-lg font-semibold">Actualizar</button></div>
+<div id="modalIOS" style="display:none" class="fixed inset-0 z-[100] bg-black/60 items-center justify-center p-4" onclick="this.style.display='none'"><div class="bg-white rounded-2xl p-5 max-w-sm text-sm text-slate-700"><h3 class="font-bold text-lg mb-2">Instalar en iPhone/iPad</h3><p>En <b>Safari</b> toca el botón <b>Compartir</b> y luego <b>"Añadir a pantalla de inicio"</b>.</p><p class="mt-3 text-xs text-slate-500">Toca para cerrar.</p></div></div>
+<div id="toast" class="fixed bottom-5 right-5 left-5 sm:left-auto transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-[60]">
         <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
-    <!-- Instalación PWA -->
+    <!-- ===== Intérprete de la INE (probado con 49 casos) ===== -->
     <script>
-      (() => {
-        const btn = document.getElementById('btnInstalarApp');
-        let installPrompt = null;
-        const esStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-        if (esStandalone()) { btn.classList.add('hidden'); return; }
-        window.addEventListener('beforeinstallprompt', (event) => {
-          event.preventDefault(); installPrompt = event; btn.classList.remove('hidden'); btn.classList.add('flex');
-        });
-        btn.addEventListener('click', async () => {
-          if (installPrompt) {
-            installPrompt.prompt();
-            await installPrompt.userChoice;
-            installPrompt = null; btn.classList.add('hidden'); btn.classList.remove('flex');
-          } else {
-            alert('Para instalar: abre esta página desde Chrome o Edge usando HTTPS, luego elige “Instalar aplicación” en el menú del navegador. En iPhone/iPad, usa Compartir → Añadir a pantalla de inicio.');
+/* Intérprete del texto leído (OCR) del frente de una credencial INE.
+ *
+ * Regla de oro: un dato solo se coloca en un campo si su estructura lo valida.
+ * Si no se puede validar, el campo queda vacío (o marcado "revisar"), nunca
+ * se rellena con texto que podría ser de otra parte de la credencial.
+ *
+ * La CURP y la clave de elector se usan únicamente para validar la fecha de
+ * nacimiento y calcular la edad; nunca se devuelven ni se guardan.
+ */
+(function (root) {
+  'use strict';
+
+  // Palabras impresas en la credencial que nunca forman parte de un nombre.
+  var RUIDO = ['INSTITUTO', 'NACIONAL', 'ELECTORAL', 'CREDENCIAL', 'PARA', 'VOTAR', 'SEXO', 'MEXICO',
+    'MEXICANOS', 'FEDERAL', 'ELECTORES', 'FIRMA', 'HUELLA', 'DOMICILIO', 'NOMBRE', 'CURP', 'ESTADO',
+    'MUNICIPIO', 'LOCALIDAD', 'SECCION', 'EMISION', 'VIGENCIA', 'NACIMIENTO', 'FECHA', 'CLAVE',
+    'REGISTRO', 'EDAD'];
+
+  // Etiquetas impresas: la primera palabra debe estar al inicio de la línea;
+  // las siguientes pueden aparecer en las dos posiciones siguientes ("DE", ruido).
+  var ETIQUETAS = [
+    { k: 'nombre', claves: ['NOMBRE'] },
+    { k: 'domicilio', claves: ['DOMICILIO'] },
+    { k: 'clave', claves: ['CLAVE', 'ELECTOR'] },
+    { k: 'curp', claves: ['CURP'] },
+    { k: 'estado', claves: ['ESTADO'] },
+    { k: 'municipio', claves: ['MUNICIPIO'] },
+    { k: 'seccion', claves: ['SECCION'] },
+    { k: 'localidad', claves: ['LOCALIDAD'] },
+    { k: 'emision', claves: ['EMISION'] },
+    { k: 'vigencia', claves: ['VIGENCIA'] },
+    { k: 'nacimiento', claves: ['FECHA', 'NACIMIENTO'] },
+    { k: 'sexo', claves: ['SEXO'] }
+  ];
+
+  var PREFIJOS = {
+    C: 'Calle', CL: 'Calle', CLL: 'Calle', CALLE: 'Calle',
+    AV: 'Avenida', AVE: 'Avenida', AVENIDA: 'Avenida',
+    CALZ: 'Calzada', CALZADA: 'Calzada',
+    PRIV: 'Privada', PRIVADA: 'Privada',
+    CARR: 'Carretera', CARRETERA: 'Carretera',
+    BLVD: 'Boulevard', BLV: 'Boulevard', BOULEVARD: 'Boulevard',
+    AND: 'Andador', ANDADOR: 'Andador',
+    CJON: 'Callejón', CALLEJON: 'Callejón',
+    PROL: 'Prolongación', PROLONGACION: 'Prolongación',
+    CIRC: 'Circuito', CIRCUITO: 'Circuito',
+    PERIF: 'Periférico', PERIFERICO: 'Periférico',
+    RET: 'Retorno', RETORNO: 'Retorno',
+    CAM: 'Camino', CAMINO: 'Camino',
+    DIAG: 'Diagonal', DIAGONAL: 'Diagonal',
+    CERR: 'Cerrada', CERRADA: 'Cerrada'
+  };
+
+  var PARTICULAS = ['de', 'del', 'la', 'las', 'los', 'y', 'e'];
+  var A_LETRA = { '0': 'O', '1': 'I', '5': 'S', '8': 'B', '2': 'Z', '6': 'G' };
+
+  // ---------- utilidades de texto ----------
+
+  // Devuelve las líneas en mayúsculas, sin acentos (se conserva la Ñ) y sin símbolos raros.
+  // Los caracteres combinantes se construyen con códigos para que ninguna herramienta
+  // que reformatee el archivo pueda alterarlos.
+  var ENIE = String.fromCharCode(0xD1);
+  var N_CON_TILDE = new RegExp('N' + String.fromCharCode(0x303), 'g');
+  var MARCAS = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+
+  function normalizar(texto) {
+    var t = String(texto || '').replace(/\r/g, '').toUpperCase();
+    t = t.normalize('NFD').replace(N_CON_TILDE, ENIE).replace(MARCAS, '');
+    t = t.replace(/[^A-ZÑ0-9\n \/\-#:.,'&]/g, ' ');
+    return t.split('\n')
+      .map(function (l) { return l.replace(/\s+/g, ' ').trim(); })
+      .filter(Boolean);
+  }
+
+  function soloLetras(s) { return s.replace(/[^A-ZÑ]/g, ''); }
+
+  function lev(a, b) {
+    var m = a.length, n = b.length, i, j, prev = [], cur;
+    for (j = 0; j <= n; j++) prev[j] = j;
+    for (i = 1; i <= m; i++) {
+      cur = [i];
+      for (j = 1; j <= n; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
+          prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+      }
+      prev = cur;
+    }
+    return prev[n];
+  }
+
+  function tol(n) { return n <= 4 ? 0 : (n <= 8 ? 1 : 2); }
+
+  function casiIgual(token, clave) {
+    var t = soloLetras(token);
+    if (!t) return false;
+    var e = tol(clave.length);
+    if (Math.abs(t.length - clave.length) > e) return false;
+    return lev(t, clave) <= e;
+  }
+
+  function coincideEtiqueta(tokens, def) {
+    var pos = 0, k, j, hallado;
+    for (k = 0; k < def.claves.length; k++) {
+      var maxAvance = k === 0 ? 0 : 2;
+      hallado = -1;
+      for (j = pos; j <= pos + maxAvance && j < tokens.length; j++) {
+        if (casiIgual(tokens[j], def.claves[k])) { hallado = j; break; }
+      }
+      if (hallado < 0) return -1;
+      pos = hallado + 1;
+    }
+    return pos;
+  }
+
+  // Si la línea empieza con una etiqueta impresa, devuelve { k, resto }.
+  function lineaEtiqueta(linea) {
+    var tokens = linea.split(' ');
+    for (var i = 0; i < ETIQUETAS.length; i++) {
+      // Etiquetas largas: se tolera hasta 2 fragmentos de ruido (restos de la foto) antes de ellas.
+      var maxOff = ETIQUETAS[i].claves[0].length >= 6 ? 2 : 0;
+      for (var off = 0; off <= maxOff && off < tokens.length; off++) {
+        var n = coincideEtiqueta(tokens.slice(off), ETIQUETAS[i]);
+        if (n > 0) return { k: ETIQUETAS[i].k, resto: tokens.slice(off + n).join(' ') };
+      }
+    }
+    return null;
+  }
+
+  function bloqueDesde(lineas, etiquetas, i) {
+    var out = [];
+    if (etiquetas[i].resto) out.push(etiquetas[i].resto);
+    for (var j = i + 1; j < lineas.length; j++) {
+      if (etiquetas[j]) break;
+      out.push(lineas[j]);
+    }
+    return out;
+  }
+
+  function indiceEtiqueta(etiquetas, k) {
+    for (var i = 0; i < etiquetas.length; i++) if (etiquetas[i] && etiquetas[i].k === k) return i;
+    return -1;
+  }
+
+  function titulo(s) {
+    return String(s).toLocaleLowerCase('es-MX').split(' ').map(function (w, i) {
+      if (!w) return w;
+      if (i > 0 && PARTICULAS.indexOf(w) >= 0) return w;
+      if (/[0-9]/.test(w)) return w.toLocaleUpperCase('es-MX');
+      return w.charAt(0).toLocaleUpperCase('es-MX') + w.slice(1);
+    }).join(' ');
+  }
+
+  // Letras que el OCR confunde con dígitos (solo se aplican a texto que debe ser numérico).
+  function digitos(s) {
+    return s.replace(/[OQD]/g, '0').replace(/[IL]/g, '1');
+  }
+
+  // Enmascara códigos largos (CURP, clave de elector) para mostrar el texto leído sin exponerlos.
+  function enmascarar(linea) {
+    return String(linea).replace(/\b(?=[A-ZÑ]*\d)[A-Z0-9Ñ]{13,}\b/g, '••••••••');
+  }
+
+  // ---------- nombre ----------
+
+  // "CARL0S" -> "CARLOS": solo si la línea es casi toda letras (1 o 2 dígitos sueltos).
+  function corregirLetras(l) {
+    var nd = (l.match(/[0-9]/g) || []).length;
+    var nl = (l.match(/[A-ZÑ]/g) || []).length;
+    if (nd < 1 || nd > 2 || nl < 4) return l;
+    return l.replace(/[0-9]/g, function (c) { return A_LETRA[c] || c; });
+  }
+
+  function esLineaNombre(l) {
+    l = corregirLetras(l);
+    if (!/^[A-ZÑ][A-ZÑ .'\-]*$/.test(l)) return null;
+    var pal = l.replace(/[.'\-]/g, ' ').split(' ').filter(function (p) { return p.length > 1 || p === 'Y'; });
+    if (!pal.length || pal.length > 5) return null;
+    for (var i = 0; i < pal.length; i++) if (RUIDO.indexOf(pal[i]) >= 0) return null;
+    if (pal.join('').length < 2) return null;   // apellidos de 2 letras (Ti, Ek, Uc, Ku...) son válidos
+    return pal.join(' ');
+  }
+
+  function leerNombre(bloque) {
+    var validas = [];
+    bloque.forEach(function (l) {
+      var v = esLineaNombre(l);
+      if (v) validas.push(v);
+    });
+    var v = validas.slice(0, 3), nombre = '', estado = 'vacio', nota = '';
+    if (v.length >= 3) {
+      nombre = v[2] + ' ' + v[0] + ' ' + v[1];
+      estado = validas.length === 3 ? 'ok' : 'revisar';
+    } else if (v.length === 2) {
+      nombre = v[1] + ' ' + v[0];
+      estado = 'revisar';
+    } else if (v.length === 1) {
+      nombre = v[0];
+      estado = 'revisar';
+    }
+    if (estado === 'revisar') nota = 'Verifica el nombre completo y su orden.';
+    return { valor: nombre ? titulo(nombre) : '', estado: estado, nota: nota };
+  }
+
+  // ---------- domicilio ----------
+
+  function corregirNumero(tok) {
+    if (/^[0-9OQDIL]+$/.test(tok) && /[0-9]/.test(tok)) return digitos(tok);
+    return tok;
+  }
+
+  function esNumeroCasa(tok) { return /^(\d+[A-Z]?(-\d+[A-Z]?)?|S\/N|SN)$/.test(tok); }
+
+  function leerDomicilio(linea) {
+    var tokens = linea.split(' ');
+    var tipo = PREFIJOS[tokens[0].replace(/[.,]/g, '')];
+    if (!tipo) return null;
+    var resto = tokens.slice(1).join(' ');
+
+    // Cruzamientos: "X a Y b", "ENTRE a Y b" o "POR a Y b".
+    var cruz = '', numeroFinal = '';
+    var mc = resto.match(/(?:^|\s)(?:ENTRE|ENTRA|X|POR|CRUZ(?:AMIENTOS)?)\.?\s+(.+?)\s+Y\s+(.+)$/);
+    if (mc) {
+      var segunda = mc[2].split(/\s+(?:COL|COLONIA|FRACC|FRACCIONAMIENTO|CP|C\.P\.)(?:\s|$)/)[0].trim();
+      var st = segunda.split(' ').map(corregirNumero);
+      // "69 A 455": el número de la casa quedó pegado al final de la segunda calle.
+      if (st.length >= 2 && /^\d+$/.test(st[st.length - 1]) &&
+          (/^[A-Z]$/.test(st[st.length - 2]) || /^\d+$/.test(st[st.length - 2]))) {
+        numeroFinal = st.pop();
+      }
+      var fixCruz = function (s) { return titulo(s.split(' ').map(corregirNumero).join(' ')); };
+      cruz = fixCruz(mc[1]) + ' y ' + fixCruz(st.join(' '));
+      resto = resto.slice(0, mc.index).trim();
+    }
+
+    var interior = '';
+    var mi = resto.match(/\s(?:INT|INTERIOR|DEPTO|DPTO|DEPARTAMENTO)\.?\s*([A-Z0-9\-]+)$/);
+    if (mi) { interior = mi[1]; resto = resto.slice(0, mi.index).trim(); }
+
+    resto = resto.replace(/(^|\s)(?:NUM|NUMERO|NO|N)\.?\s*(?=\d|S\/N)/g, '$1')
+      .replace(/(^|\s)#\s*/g, '$1').trim();
+
+    var t = resto.split(' ').filter(Boolean).map(corregirNumero);
+    var numero = '';
+    if (t.length >= 2 && esNumeroCasa(t[t.length - 1])) numero = t.pop();
+    var nombreCalle = t.join(' ');
+    if (!nombreCalle) return null;
+    if (!numero && numeroFinal) numero = numeroFinal;
+    if (numero === 'SN') numero = 'S/N';
+    if (interior) numero = (numero ? numero + ' ' : '') + 'Int ' + interior;
+    return { calle: tipo + ' ' + titulo(nombreCalle), numero: numero, cruzamientos: cruz };
+  }
+
+  // ---------- fechas, CURP y clave de elector ----------
+
+  function validarFecha(y, m, d, hoy) {
+    if (!(y >= 1900 && y <= hoy.getFullYear())) return false;
+    if (!(m >= 1 && m <= 12)) return false;
+    if (!(d >= 1 && d <= new Date(y, m, 0).getDate())) return false;
+    return new Date(y, m - 1, d) <= hoy;
+  }
+
+  function calcularEdad(y, m, d, hoy) {
+    var e = hoy.getFullYear() - y;
+    var dm = hoy.getMonth() + 1 - m;
+    if (dm < 0 || (dm === 0 && hoy.getDate() < d)) e--;
+    return e;
+  }
+
+  // La clave de elector no trae siglo: se elige el que dé una edad de 18 a 120 años.
+  function resolverSiglo(yy, m, d, hoy) {
+    var cands = [2000 + yy, 1900 + yy], i, e;
+    for (i = 0; i < cands.length; i++) {
+      if (validarFecha(cands[i], m, d, hoy)) {
+        e = calcularEdad(cands[i], m, d, hoy);
+        if (e >= 18 && e <= 120) return cands[i];
+      }
+    }
+    return 0;
+  }
+
+  var PAT_CURP = 'LLLLDDDDDDLLLLLLAD';
+  var PAT_CLAVE = 'LLLLLLDDDDDDDDLDDD';
+  var A_DIGITO = { O: '0', Q: '0', D: '0', I: '1', L: '1', Z: '2', S: '5', G: '6', B: '8' };
+
+  function ajustar(cad, pat) {
+    var out = '';
+    for (var i = 0; i < pat.length; i++) {
+      var c = cad.charAt(i), p = pat.charAt(i);
+      if (p === 'L') {
+        if (/[0-9]/.test(c)) { c = A_LETRA[c]; if (!c) return null; }
+      } else if (p === 'D') {
+        if (/[A-ZÑ]/.test(c)) { c = A_DIGITO[c]; if (!c) return null; }
+      }
+      out += c;
+    }
+    return out;
+  }
+
+  // Busca una CURP y una clave de elector. Devuelve solo las fechas que contienen.
+  function buscarCodigos(lineas, hoy) {
+    var res = { curp: null, clave: null };
+    lineas.forEach(function (l) {
+      var c = l.replace(/[^A-Z0-9Ñ]/g, '');
+      for (var i = 0; i + 18 <= c.length; i++) {
+        var w = c.substr(i, 18), a;
+        if (!res.curp) {
+          a = ajustar(w, PAT_CURP);
+          if (a && /[HM]/.test(a.charAt(10))) {
+            var m1 = +a.substr(6, 2), d1 = +a.substr(8, 2), yy1 = +a.substr(4, 2);
+            var y1 = /[0-9]/.test(a.charAt(16)) ? 1900 + yy1 : 2000 + yy1;
+            if (validarFecha(y1, m1, d1, hoy)) res.curp = { y: y1, m: m1, d: d1 };
           }
-        });
-        window.addEventListener('appinstalled', () => { btn.classList.add('hidden'); btn.classList.remove('flex'); });
-        if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-          window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
         }
-      })();
+        if (!res.clave) {
+          a = ajustar(w, PAT_CLAVE);
+          if (a && /[HM]/.test(a.charAt(14))) {
+            var yy2 = +a.substr(6, 2), m2 = +a.substr(8, 2), d2 = +a.substr(10, 2);
+            var y2 = resolverSiglo(yy2, m2, d2, hoy);
+            if (y2) res.clave = { y: y2, m: m2, d: d2, texto: a };
+          }
+        }
+      }
+    });
+    return res;
+  }
+
+  function leerFechaEtiqueta(plano, hoy) {
+    var m = plano.match(/NACIMIENTO\s*[:.]?\s*([0-9OQDIL]{2})\D{1,3}([0-9OQDIL]{2})\D{1,3}([0-9OQDIL]{4})/) ||
+      plano.match(/NACIMIENTO\s*[:.]?\s*([0-9]{2})([0-9]{2})([0-9]{4})/);
+    if (!m) return null;
+    var d = +digitos(m[1]), mm = +digitos(m[2]), y = +digitos(m[3]);
+    return validarFecha(y, mm, d, hoy) ? { y: y, m: mm, d: d } : null;
+  }
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+  function leerEdad(plano, lineas, hoy) {
+    var cods = buscarCodigos(lineas, hoy);
+    var et = leerFechaEtiqueta(plano, hoy);
+    var cand = [];
+    if (cods.curp) cand.push({ f: cods.curp, fuente: 'curp' });
+    if (et) cand.push({ f: et, fuente: 'etiqueta' });
+    if (cods.clave) cand.push({ f: cods.clave, fuente: 'clave' });
+
+    var avisos = [];
+    var campo = { valor: '', estado: 'vacio', nota: '' };
+
+    if (!cand.length) {
+      // Credenciales antiguas imprimen la edad directamente.
+      var me = plano.match(/\bEDAD\s*[:.]?\s*([0-9OQDIL]{2,3})\b/);
+      if (me) {
+        var e0 = +digitos(me[1]);
+        if (e0 >= 18 && e0 <= 120) {
+          campo = { valor: e0, estado: 'revisar', nota: 'Edad leída directamente de la credencial. Verifícala.' };
+        }
+      }
+      return { campo: campo, avisos: avisos, hayCodigos: !!(cods.curp || cods.clave) };
+    }
+
+    var conteo = {}, mejor = null;
+    cand.forEach(function (c) {
+      var k = c.f.y + '-' + c.f.m + '-' + c.f.d;
+      conteo[k] = (conteo[k] || 0) + 1;
+    });
+    cand.forEach(function (c) {
+      var k = c.f.y + '-' + c.f.m + '-' + c.f.d;
+      if (!mejor || conteo[k] > conteo[mejor.k]) mejor = { k: k, f: c.f };
+    });
+    var distintos = Object.keys(conteo).length;
+    var f = mejor.f;
+    var edad = calcularEdad(f.y, f.m, f.d, hoy);
+
+    if (distintos > 1) avisos.push('La fecha de nacimiento no coincide entre las partes de la credencial. Verifica la edad.');
+
+    if (edad < 18) {
+      avisos.push('La fecha leída corresponde a una persona menor de 18 años; no se llenó la edad. Verifica la lectura.');
+      return { campo: campo, avisos: avisos, hayCodigos: !!(cods.curp || cods.clave) };
+    }
+    if (edad > 120) {
+      avisos.push('La edad calculada es mayor a 120 años; no se llenó. Verifica la lectura.');
+      return { campo: campo, avisos: avisos, hayCodigos: !!(cods.curp || cods.clave) };
+    }
+    campo = {
+      valor: edad,
+      estado: conteo[mejor.k] >= 2 ? 'ok' : 'revisar',
+      nota: 'Calculada con la fecha ' + pad2(f.d) + '/' + pad2(f.m) + '/' + f.y + '.' +
+        (conteo[mejor.k] >= 2 ? '' : ' Verifícala.')
+    };
+    return { campo: campo, avisos: avisos, hayCodigos: !!(cods.curp || cods.clave) };
+  }
+
+  // ---------- sección ----------
+
+  function numeroSeccion(tok) {
+    var crudo = String(tok || '').replace(/[^A-Z0-9Ñ]/g, '');
+    if (!/^[0-9OQDIL]{3,4}$/.test(crudo)) return '';
+    if ((crudo.match(/[0-9]/g) || []).length < 2) return '';
+    return digitos(crudo);
+  }
+
+  function leerSeccion(plano) {
+    var tokens = plano.split(' ').filter(Boolean), i, j, d;
+    // 1) Etiqueta SECCIÓN (tolera errores de lectura) seguida del número.
+    for (i = 0; i < tokens.length; i++) {
+      if (!casiIgual(tokens[i], 'SECCION')) continue;
+      for (j = i + 1; j <= i + 2 && j < tokens.length; j++) {
+        d = numeroSeccion(tokens[j]);
+        if (d) {
+          if (d.length === 3) return { valor: '0' + d, estado: 'revisar', nota: 'Solo se leyeron 3 dígitos. Verifica la sección.' };
+          return { valor: d, estado: 'ok', nota: '' };
+        }
+      }
+    }
+    // 1b) Etiqueta y número pegados ("SECCION0123").
+    var mg = plano.match(/SEC[CG][A-Z0-9]{0,3}\s*[:.]?\s*([0-9OQDIL]{4})(?![0-9A-Z])/);
+    if (mg) {
+      d = numeroSeccion(mg[1]);
+      if (d.length === 4) return { valor: d, estado: 'ok', nota: '' };
+    }
+    // 2) El número de 4 dígitos que va justo antes de LOCALIDAD.
+    for (i = 1; i < tokens.length; i++) {
+      if (casiIgual(tokens[i], 'LOCALIDAD')) {
+        d = numeroSeccion(tokens[i - 1]);
+        if (d.length === 4) return { valor: d, estado: 'revisar', nota: 'La etiqueta no se leyó; se tomó el número junto a LOCALIDAD. Verifícala.' };
+      }
+    }
+    // 2b) Número pegado a LOCALIDAD ("1234LOCALIDAD").
+    var ml = plano.match(/([0-9OQDIL]{4})\s*LOCALI[A-Z0-9]{0,4}/);
+    if (ml) {
+      d = numeroSeccion(ml[1]);
+      if (d.length === 4) return { valor: d, estado: 'revisar', nota: 'La etiqueta no se leyó; se tomó el número junto a LOCALIDAD. Verifícala.' };
+    }
+    // 3) El número de 4 dígitos que sigue a MUNICIPIO + su clave.
+    for (i = 0; i + 2 < tokens.length; i++) {
+      if (casiIgual(tokens[i], 'MUNICIPIO') && /^[0-9OQDIL]{1,3}$/.test(tokens[i + 1])) {
+        d = numeroSeccion(tokens[i + 2]);
+        if (d.length === 4) return { valor: d, estado: 'revisar', nota: 'La etiqueta no se leyó; se tomó el número después del municipio. Verifícala.' };
+      }
+    }
+    return { valor: '', estado: 'vacio', nota: '' };
+  }
+
+  // ---------- interpretación completa ----------
+
+  function vacio() { return { valor: '', estado: 'vacio', nota: '' }; }
+
+  function interpretar(texto, hoy) {
+    hoy = hoy || new Date();
+    var lineas = normalizar(texto);
+    var etiquetas = lineas.map(lineaEtiqueta);
+    var plano = lineas.join(' ');
+    var avisos = [];
+    var campos = {
+      nombre: vacio(), edad: vacio(), calle: vacio(), numero: vacio(), cruzamientos: vacio(), seccion: vacio(),
+      claveElector: vacio()
+    };
+
+    var iN = indiceEtiqueta(etiquetas, 'nombre');
+    if (iN >= 0) campos.nombre = leerNombre(bloqueDesde(lineas, etiquetas, iN));
+
+    // Respaldo: si no se leyó la etiqueta NOMBRE, se toman las líneas de nombre justo antes de DOMICILIO.
+    if (campos.nombre.estado === 'vacio') {
+      var iDom = indiceEtiqueta(etiquetas, 'domicilio');
+      if (iDom > 0) {
+        var previas = [];
+        for (var q = iDom - 1; q >= 0 && previas.length < 3; q--) {
+          if (etiquetas[q] && etiquetas[q].k !== 'nombre') break;
+          var vq = esLineaNombre(lineas[q]);
+          if (vq) previas.unshift(vq);
+        }
+        if (previas.length >= 2) {
+          var nom = previas.length >= 3 ? previas[2] + ' ' + previas[0] + ' ' + previas[1] : previas[1] + ' ' + previas[0];
+          campos.nombre = { valor: titulo(nom), estado: 'revisar', nota: 'No se leyó la etiqueta NOMBRE; se tomaron las líneas anteriores al domicilio. Verifica el nombre y su orden.' };
+        }
+      }
+    }
+
+    var iD = indiceEtiqueta(etiquetas, 'domicilio');
+    if (iD >= 0) {
+      var bd = bloqueDesde(lineas, etiquetas, iD);
+      var dom = bd.length ? leerDomicilio(bd[0]) : null;
+      if (dom) {
+        campos.calle = { valor: dom.calle, estado: 'ok', nota: '' };
+        if (dom.numero) campos.numero = { valor: dom.numero, estado: 'ok', nota: '' };
+        else campos.numero = { valor: '', estado: 'vacio', nota: 'No se leyó el número. Captúralo.' };
+        if (dom.cruzamientos) campos.cruzamientos = { valor: dom.cruzamientos, estado: 'ok', nota: '' };
+      } else {
+        avisos.push('No se pudo interpretar la línea del domicilio. Captúrala a mano.');
+      }
+    }
+
+    var ed = leerEdad(plano, lineas, hoy);
+    campos.edad = ed.campo;
+    ed.avisos.forEach(function (a) { avisos.push(a); });
+
+    campos.seccion = leerSeccion(plano);
+
+    // Clave de elector: se acepta solo si su estructura y su fecha son válidas.
+    var cods = buscarCodigos(lineas, hoy);
+    if (cods.clave) {
+      var fEt = leerFechaEtiqueta(plano, hoy);
+      var mismaFecha = function (x, y) { return !!(x && y && x.y === y.y && x.m === y.m && x.d === y.d); };
+      var corrobora = mismaFecha(cods.clave, cods.curp) || mismaFecha(cods.clave, fEt);
+      campos.claveElector = {
+        valor: cods.clave.texto,
+        estado: corrobora ? 'ok' : 'revisar',
+        nota: corrobora ? '' : 'Verifica la clave de elector (18 caracteres).'
+      };
+    }
+
+    var nEt = etiquetas.filter(Boolean).length;
+    var llenos = Object.keys(campos).filter(function (k) { return campos[k].estado !== 'vacio'; }).length;
+    return {
+      campos: campos,
+      avisos: avisos,
+      lineas: lineas,
+      puntaje: nEt + llenos + (ed.hayCodigos ? 2 : 0)
+    };
+  }
+
+  var RANGO = { vacio: 0, revisar: 1, ok: 2 };
+
+  // Une dos lecturas del mismo documento. Por campo gana la de mejor calidad;
+  // si las dos lecturas tienen valor pero no coinciden, el campo queda "por revisar".
+  function fusionar(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    var campos = {};
+    Object.keys(a.campos).forEach(function (k) {
+      var ca = a.campos[k], cb = b.campos[k];
+      var gana = RANGO[cb.estado] > RANGO[ca.estado] ? cb : ca;
+      if (ca.estado !== 'vacio' && cb.estado !== 'vacio' && String(ca.valor) !== String(cb.valor)) {
+        gana = { valor: gana.valor, estado: 'revisar', nota: 'Las lecturas no coinciden. Verifica este dato.' };
+      }
+      campos[k] = gana;
+    });
+    var avisos = a.avisos.slice();
+    b.avisos.forEach(function (x) { if (avisos.indexOf(x) < 0) avisos.push(x); });
+    return {
+      campos: campos,
+      avisos: avisos,
+      lineas: a.lineas.concat(['--- otra lectura ---'], b.lineas),
+      puntaje: Math.max(a.puntaje, b.puntaje)
+    };
+  }
+
+  // Lectura suficiente: nombre, edad, calle y sección con algún valor.
+  function esSuficiente(r) {
+    return ['nombre', 'edad', 'calle', 'seccion'].every(function (k) { return r.campos[k].estado !== 'vacio'; });
+  }
+
+  var api = {
+    interpretar: interpretar,
+    fusionar: fusionar,
+    esSuficiente: esSuficiente,
+    enmascarar: enmascarar,
+    normalizar: normalizar
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.INEParser = api;
+})(typeof window !== 'undefined' ? window : this);
+
     </script>
 
-    <!-- SCRIPTS DE CONEXIÓN A FIREBASE Y LÓGICA DE VOTOS -->
+    <!-- ===== Lector de listas en PDF ===== -->
+    <script>
+/* Lector de listas en PDF (tablas con texto digital).
+ *
+ * Entrada: una lista de páginas; cada página es una lista de fragmentos de texto
+ *   { str, x, y, w, h }   (x: izquierda, y: coordenada vertical creciente hacia abajo,
+ *                          w: ancho, h: alto de la letra)
+ * Salida: una fila por persona con nombre, sección, calle, número, cruzamientos, teléfono...
+ *
+ * Las columnas se detectan por la posición real del texto en TODAS las filas y se
+ * nombran con el encabezado que quede sobre ellas, así que tolera celdas vacías,
+ * columnas en otro orden y cruzamientos repartidos en dos subcolumnas.
+ */
+(function (root) {
+  'use strict';
+
+  var PARTICULAS = ['de', 'del', 'la', 'las', 'los', 'y', 'e'];
+  var PREFIJOS = {
+    C: 'Calle', CL: 'Calle', CALLE: 'Calle', AV: 'Avenida', AVE: 'Avenida', AVENIDA: 'Avenida',
+    CALZ: 'Calzada', CALZADA: 'Calzada', PRIV: 'Privada', PRIVADA: 'Privada', CARR: 'Carretera',
+    CARRETERA: 'Carretera', BLVD: 'Boulevard', BOULEVARD: 'Boulevard', AND: 'Andador', ANDADOR: 'Andador',
+    CJON: 'Callejón', CALLEJON: 'Callejón', PROL: 'Prolongación', PROLONGACION: 'Prolongación',
+    CIRC: 'Circuito', CIRCUITO: 'Circuito', PERIF: 'Periférico', RET: 'Retorno', CAM: 'Camino',
+    CAMINO: 'Camino', DIAG: 'Diagonal', CERR: 'Cerrada', CERRADA: 'Cerrada'
+  };
+
+  // ---------- texto ----------
+  function sinAcentos(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+  function clave(s) { // texto de encabezado normalizado: MAYÚSCULAS, sin acentos ni signos
+    return sinAcentos(s).toUpperCase().replace(/[^A-Z0-9Ñ ]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function titulo(s) {
+    return String(s).toLocaleLowerCase('es-MX').split(' ').map(function (w, i) {
+      if (!w) return w;
+      if (i > 0 && PARTICULAS.indexOf(w) >= 0) return w;
+      if (/[0-9]/.test(w)) return w.toLocaleUpperCase('es-MX');
+      return w.charAt(0).toLocaleUpperCase('es-MX') + w.slice(1);
+    }).join(' ');
+  }
+  function limpiar(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
+
+  // ---------- encabezados ----------
+  var ENCABEZADOS = [
+    ['nombre', /^NOMBRE( COMPLETO)?( Y APELLIDOS?)?$|^NOMBRES?$/],
+    ['seccion', /^SEC(C|CION)?$/],
+    ['calle', /^(CALLE|DOMICILIO|DIRECCION)$/],
+    ['num', /^(NUM|NO|N|NUMERO|NUM EXT|NUMERO EXT|NUM EXTERIOR)$/],
+    ['cruz', /^(CRUZ|CRUZAMIENTOS?|CRUCES?|ENTRE|CRUZ AMIENTO)$/],
+    ['telefono', /^(CEL|CELULAR|TEL|TELEFONO|TELEFONOS|WHATSAPP|WHATS|CONTACTO)$/],
+    ['edad', /^EDAD$/],
+    ['claveElector', /^(CLAVE|CLAVE DE ELECTOR|CLAVE ELECTOR|CLAVE ELECTORAL|INE)$/],
+    ['facebook', /^(FACEBOOK|FB|REDES|RED SOCIAL)$/],
+    ['area', /^AREA$/],
+    ['colonia', /^(COL|COLONIA)$/]
+  ];
+
+  function tipoEncabezado(texto) {
+    var k = clave(texto);
+    if (!k) return '';
+    for (var i = 0; i < ENCABEZADOS.length; i++) if (ENCABEZADOS[i][1].test(k)) return ENCABEZADOS[i][0];
+    return '';
+  }
+
+  // ---------- geometría ----------
+  function mediana(v) {
+    if (!v.length) return 8;
+    var s = v.slice().sort(function (a, b) { return a - b; });
+    return s[Math.floor(s.length / 2)];
+  }
+
+  // Agrupa los fragmentos en filas y une los que están pegados (palabras de una misma celda).
+  function armarFilas(items) {
+    var lim = items
+      .map(function (it) {
+        return { s: limpiar(it.str), x: +it.x, xe: +it.x + (+it.w || 0), y: +it.y, h: +it.h || 8 };
+      })
+      .filter(function (it) { return it.s && isFinite(it.x) && isFinite(it.y); });
+    if (!lim.length) return [];
+    var tolY = Math.max(2.5, 0.5 * mediana(lim.map(function (i) { return i.h; })));
+    lim.sort(function (a, b) { return a.y - b.y || a.x - b.x; });
+
+    var filas = [];
+    lim.forEach(function (it) {
+      var f = filas.length ? filas[filas.length - 1] : null;
+      if (f && Math.abs(it.y - f.y) <= tolY) {
+        f.items.push(it);
+        f.y = (f.y * (f.items.length - 1) + it.y) / f.items.length;
+      } else filas.push({ y: it.y, items: [it] });
+    });
+
+    filas.forEach(function (f) {
+      f.items.sort(function (a, b) { return a.x - b.x; });
+      var celdas = [];
+      f.items.forEach(function (it) {
+        var c = celdas.length ? celdas[celdas.length - 1] : null;
+        var hueco = c ? it.x - c.xe : 0;
+        if (c && hueco < Math.max(3.5, 0.6 * it.h)) {
+          c.s += (hueco > 0.5 ? ' ' : '') + it.s;
+          c.xe = Math.max(c.xe, it.xe);
+        } else celdas.push({ s: it.s, x: it.x, xe: it.xe, y: f.y, h: it.h });
+      });
+      f.celdas = celdas;
+    });
+    return filas;
+  }
+
+  function solape(a0, a1, b0, b1) { return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0)); }
+
+  // Fila de encabezados: la primera con al menos 3 celdas reconocidas (una de ellas, NOMBRE).
+  function buscarEncabezado(filas) {
+    for (var i = 0; i < filas.length; i++) {
+      var reconocidas = filas[i].celdas.map(function (c) { return { c: c, t: tipoEncabezado(c.s) }; })
+        .filter(function (x) { return x.t; });
+      var distintos = {};
+      reconocidas.forEach(function (x) { distintos[x.t] = 1; });
+      if (Object.keys(distintos).length >= 3 && distintos.nombre) {
+        return { indice: i, celdas: reconocidas };
+      }
+    }
+    return null;
+  }
+
+  // Columnas = tramos del eje X ocupados por texto en las filas de datos; cada tramo toma el
+  // encabezado con el que más se solapa (o el más cercano si ninguno se solapa).
+  function armarColumnas(datos, encab) {
+    var tramos = [];
+    datos.forEach(function (f) { f.celdas.forEach(function (c) { tramos.push([c.x, c.xe]); }); });
+    tramos.sort(function (a, b) { return a[0] - b[0]; });
+    var cols = [];
+    tramos.forEach(function (t) {
+      var u = cols.length ? cols[cols.length - 1] : null;
+      if (u && t[0] - u.xe < 4) u.xe = Math.max(u.xe, t[1]);
+      else cols.push({ x: t[0], xe: t[1] });
+    });
+
+    var nombreX = null;
+    encab.forEach(function (e) { if (e.t === 'nombre') nombreX = (e.c.x + e.c.xe) / 2; });
+
+    cols.forEach(function (col) {
+      var mejor = null, mejorSol = 0, cercano = null, dist = Infinity;
+      encab.forEach(function (e) {
+        var s = solape(col.x, col.xe, e.c.x, e.c.xe);
+        if (s > mejorSol) { mejorSol = s; mejor = e; }
+        var d = Math.abs((col.x + col.xe) / 2 - (e.c.x + e.c.xe) / 2);
+        if (d < dist) { dist = d; cercano = e; }
+      });
+      var e = mejor || (dist < 40 ? cercano : null);
+      var tipo = e ? e.t : '';
+      if (tipo === 'num') tipo = (nombreX !== null && (col.x + col.xe) / 2 < nombreX) ? 'indice' : 'numero';
+      col.tipo = tipo;
+    });
+    return cols;
+  }
+
+  // ---------- normalización de campos ----------
+  function normTelefono(s) {
+    var d = String(s || '').replace(/\D/g, '');
+    if (d.length === 13 && d.indexOf('521') === 0) d = d.slice(3);
+    else if (d.length === 12 && d.indexOf('52') === 0) d = d.slice(2);
+    return d;
+  }
+  function normNumero(s) {
+    var t = limpiar(s).toUpperCase().replace(/[.,]/g, '');
+    if (/^(S\s*[\\\/\-]\s*N|SN|SIN NUMERO|S\/N)$/.test(t)) return 'S/N';
+    return t;
+  }
+  function normCalle(s) {
+    var t = limpiar(s).toUpperCase().replace(/\.$/, '');
+    if (!t) return '';
+    var tokens = t.split(' ');
+    var pre = PREFIJOS[tokens[0].replace(/[.,]/g, '')];
+    if (pre) return pre + (tokens.length > 1 ? ' ' + titulo(tokens.slice(1).join(' ')) : '');
+    if (/^[0-9]/.test(t)) return 'Calle ' + titulo(t);
+    return titulo(t);
+  }
+  function normSeccion(s) {
+    var d = String(s || '').replace(/\D/g, '');
+    if (d.length === 3) d = '0' + d;
+    return /^\d{4}$/.test(d) ? d : '';
+  }
+  function normCruz(partes) {
+    var p = partes.map(limpiar).filter(Boolean);
+    if (!p.length) return '';
+    if (p.length === 1) return titulo(p[0].replace(/\s+Y\s+/i, ' y '));
+    return titulo(p[0]) + ' y ' + titulo(p.slice(1).join(' '));
+  }
+
+  var NOMBRES_CAMPO = {
+    nombre: 'nombre', seccion: 'sección', calle: 'calle', numero: 'número',
+    cruzamientos: 'cruzamientos', telefono: 'teléfono'
+  };
+
+  function armarPersona(fila, cols) {
+    var v = { nombre: [], seccion: [], calle: [], numero: [], cruz: [], telefono: [], edad: [], claveElector: [], facebook: [] };
+    fila.celdas.forEach(function (c) {
+      var col = null, mejorSol = -1;
+      cols.forEach(function (k) {
+        var s = solape(c.x, c.xe, k.x, k.xe);
+        if (s > mejorSol) { mejorSol = s; col = k; }
+      });
+      if (!col || !col.tipo || !v[col.tipo === 'cruz' ? 'cruz' : col.tipo]) return;
+      var destino = col.tipo === 'cruz' ? 'cruz' : col.tipo;
+      v[destino].push(c.s);
+    });
+
+    var p = {
+      nombre: titulo(limpiar(v.nombre.join(' ')).toUpperCase()),
+      seccion: normSeccion(v.seccion.join('')),
+      calle: normCalle(v.calle.join(' ')),
+      numero: normNumero(v.numero.join(' ')),
+      cruzamientos: normCruz(v.cruz),
+      telefono: normTelefono(v.telefono.join('')),
+      edad: '',
+      claveElector: limpiar(v.claveElector.join('')).toUpperCase().replace(/[^A-Z0-9]/g, ''),
+      facebook: limpiar(v.facebook.join(' '))
+    };
+    var edad = parseInt(v.edad.join(''), 10);
+    if (edad >= 18 && edad <= 120) p.edad = edad;
+    if (p.claveElector.length !== 18) p.claveElector = '';
+    return p;
+  }
+
+  function evaluar(p) {
+    var faltan = [], avisos = [];
+    ['nombre', 'seccion', 'calle', 'numero', 'cruzamientos'].forEach(function (k) {
+      if (!p[k]) faltan.push(NOMBRES_CAMPO[k] || k);
+    });
+    if (!p.telefono) faltan.push('teléfono');
+    else if (p.telefono.length !== 10) avisos.push('el teléfono no tiene 10 dígitos');
+    if (!p.edad) avisos.push('sin edad');
+    return { faltan: faltan, avisos: avisos };
+  }
+
+  // ---------- API ----------
+  // paginas: [[{str,x,y,w,h}, ...], ...]
+  function extraer(paginas) {
+    var salida = { personas: [], titulo: '', aviso: '', columnas: [] };
+    var colsPrevias = null, seccionEncabezado = '';
+
+    (paginas || []).forEach(function (items, nPag) {
+      var filas = armarFilas(items);
+      if (!filas.length) return;
+      var enc = buscarEncabezado(filas);
+      var datos, cols;
+
+      if (enc) {
+        // Texto sobre la tabla: título de la lista y sección escrita en el encabezado.
+        var previo = filas.slice(0, enc.indice).map(function (f) { return f.celdas.map(function (c) { return c.s; }).join(' '); });
+        if (!salida.titulo && previo.length) {
+          var tit = previo.join(' ').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim();
+          salida.titulo = tit;
+          var ms = previo.join(' ').match(/SECC(?:ION)?\.?[\s_:]*([0-9]{3,4})(?![0-9])/i);
+          if (ms) seccionEncabezado = normSeccion(ms[1]);
+        }
+        datos = filas.slice(enc.indice + 1);
+        cols = armarColumnas(datos, enc.celdas);
+        colsPrevias = cols;
+      } else if (colsPrevias) {
+        datos = filas;
+        cols = colsPrevias;
+      } else return;
+
+      datos.forEach(function (f) {
+        var p = armarPersona(f, cols);
+        if (!p.nombre && !p.telefono) return;
+        if (/^NOMBRE/i.test(clave(p.nombre))) return;
+        var ev = evaluar(p);
+        var notas = [];
+        if (!p.seccion && seccionEncabezado) { p.seccion = seccionEncabezado; notas.push('sección tomada del encabezado'); ev.faltan = ev.faltan.filter(function (x) { return x !== 'sección'; }); }
+        p.faltan = ev.faltan;
+        p.avisos = ev.avisos.concat(notas);
+        p.pagina = nPag + 1;
+        salida.personas.push(p);
+      });
+    });
+
+    if (!salida.personas.length) {
+      salida.aviso = (paginas || []).some(function (p) { return p && p.length; })
+        ? 'Se leyó texto, pero no se reconoció una tabla con columnas como NOMBRE, SECC., CALLE o CELULAR.'
+        : 'Este PDF no tiene texto seleccionable (parece escaneado o son imágenes).';
+    }
+    return salida;
+  }
+
+  var api = { extraer: extraer, evaluar: evaluar, _armarFilas: armarFilas, _tipoEncabezado: tipoEncabezado };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.ListaPDF = api;
+})(typeof window !== 'undefined' ? window : this);
+
+    </script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBqKSZ5zkDidsjWRZpb6lT1xronLWkKYsI",
@@ -237,20 +1397,28 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
 
         const $ = (id) => document.getElementById(id);
         const leerLS = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-        const escribirLS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
-        const borrarLS = (k) => { try { localStorage.removeItem(k); } catch (e) {} };
+        const escribirLS = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sin almacenamiento */ } };
+        const borrarLS = (k) => { try { localStorage.removeItem(k); } catch (e) { /* sin almacenamiento */ } };
 
         let usuarioActual = leerLS('usuarioActual') || null;
         let listaUsuariosCloud = {};
+        let sinUsuarios = false;
         let listaGlobalRegistros = [];
-        let filtroVotoActual = 'Todos';
+        let categoriaSeleccionada = 'Todos';
+        let mediaStreamVivo = null;
+        let workerOCR = null;
 
+        // Escapa texto antes de mostrarlo con innerHTML (evita que un registro ejecute código).
         function esc(v) {
-            return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
         }
 
         window.togglePassword = function (idInput, idIcon) {
@@ -262,24 +1430,43 @@
         window.mostrarToast = function (mensaje, tipo = 'success') {
             const toast = $('toast');
             $('toastMsg').textContent = mensaje;
-            $('toastIcon').className = tipo === 'success' ? 'fa-solid fa-circle-check text-emerald-400 text-lg' : 'fa-solid fa-triangle-exclamation text-rose-400 text-lg';
+            $('toastIcon').className = tipo === 'success'
+                ? 'fa-solid fa-circle-check text-emerald-400 text-lg'
+                : 'fa-solid fa-triangle-exclamation text-rose-400 text-lg';
             toast.classList.remove('translate-y-20', 'opacity-0');
             clearTimeout(window.__toastTimer);
-            window.__toastTimer = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+            window.__toastTimer = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), tipo === 'success' ? 3000 : 5000);
         };
 
-        setInterval(() => {
-            $('liveClock').textContent = new Date().toLocaleTimeString('es-MX');
-        }, 1000);
+        // ==========================================
+        // CONTRASEÑAS (como en la versión original: texto simple en la colección "usuarios")
+        // ==========================================
+        function aHex(buf) { return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join(''); }
+        async function credencialesNuevas(pass) { return { password: pass }; }
+        async function verificarPass(usuario, pass) {
+            const u = listaUsuariosCloud[usuario];
+            if (!u) return false;
+            if (typeof u.password === 'string') return u.password === pass;
+            // Cuenta convertida a hash por la versión anterior: se sigue aceptando.
+            if (u.hash && u.salt && window.crypto && crypto.subtle) {
+                const h = aHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(u.salt + ':' + pass)));
+                return h === u.hash;
+            }
+            return false;
+        }
 
-        // Autenticación Nube
+        // ==========================================
+        // SESIÓN Y USUARIOS
+        // ==========================================
         onSnapshot(collection(db, 'usuarios'), (snapshot) => {
             listaUsuariosCloud = {};
             snapshot.forEach((d) => { listaUsuariosCloud[d.id] = d.data(); });
-            if (Object.keys(listaUsuariosCloud).length === 0) {
-                setDoc(doc(db, 'usuarios', 'Admin'), { password: 'admin1234' }).catch(() => {});
+            sinUsuarios = Object.keys(listaUsuariosCloud).length === 0;
+            if (sinUsuarios) {
+                setDoc(doc(db, 'usuarios', 'Admin'), { password: 'admin1234' }).catch((e) => console.error(e));
                 listaUsuariosCloud['Admin'] = { password: 'admin1234' };
             }
+
             if (usuarioActual && listaUsuariosCloud[usuarioActual]) {
                 $('loginModal').classList.add('hidden');
                 actualizarPermisosUI();
@@ -287,28 +1474,47 @@
                 if (usuarioActual) { borrarLS('usuarioActual'); usuarioActual = null; }
                 $('loginModal').classList.remove('hidden');
             }
+            if (!$('modalColaboradores').classList.contains('hidden')) pintarColaboradores();
+        }, (err) => {
+            console.error(err);
+            mostrarToast('No se pudo leer la lista de usuarios (revisa tu conexión o permisos).', 'error');
         });
 
-        $('loginForm').addEventListener('submit', (e) => {
+        function entrar(usuario) {
+            usuarioActual = usuario;
+            escribirLS('usuarioActual', usuario);
+            $('loginModal').classList.add('hidden');
+            $('loginError').classList.add('hidden');
+            $('loginForm').reset();
+            actualizarPermisosUI();
+            mostrarToast('¡Bienvenido, ' + usuario + '!');
+        }
+
+        $('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const user = $('loginUser').value.trim();
             const pass = $('loginPassword').value.trim();
-            if (listaUsuariosCloud[user] && listaUsuariosCloud[user].password === pass) {
-                usuarioActual = user;
-                escribirLS('usuarioActual', user);
-                $('loginModal').classList.add('hidden');
-                $('loginError').classList.add('hidden');
-                $('loginForm').reset();
-                actualizarPermisosUI();
-                mostrarToast('¡Bienvenido, ' + user + '!');
-            } else {
+            const btn = $('btnLogin');
+            btn.disabled = true;
+            try {
+                if (await verificarPass(user, pass)) entrar(user);
+                else {
+                    $('loginError').textContent = 'Usuario o contraseña incorrectos';
+                    $('loginError').classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error(err);
+                $('loginError').textContent = 'No se pudo iniciar sesión: ' + (err.message || 'error de conexión');
                 $('loginError').classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
             }
         });
 
         window.cerrarSesion = function () {
             borrarLS('usuarioActual');
             usuarioActual = null;
+            cerrarCamaraEnVivo();
             $('loginModal').classList.remove('hidden');
             $('currentUserBadge').textContent = 'Invitado';
             actualizarPermisosUI();
@@ -319,177 +1525,944 @@
 
         function actualizarPermisosUI() {
             $('currentUserBadge').textContent = usuarioActual || 'Invitado';
+            $('btnVerColaboradores').classList.toggle('hidden', !esAdmin());
+            $('sectionCrearUsuario').classList.toggle('hidden', !esAdmin());
             const botones = $('botonesExportar');
-            botones.classList.toggle('hidden', !esAdmin());
-            botones.classList.toggle('flex', esAdmin());
+            botones.classList.toggle('hidden', !usuarioActual);
+            botones.classList.toggle('flex', !!usuarioActual);
             filtrarRegistros();
         }
 
-        // Carga de Registros desde la misma colección de Firestore
-        onSnapshot(collection(db, 'registros'), (snapshot) => {
-            listaGlobalRegistros = [];
-            snapshot.forEach(d => listaGlobalRegistros.push({ id: d.id, ...d.data() }));
-            listaGlobalRegistros.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
-            actualizarSelectorSecciones();
-            actualizarEstadisticas();
-            filtrarRegistros();
+        $('crearUsuarioForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!esAdmin()) return;
+            const nuevoUser = $('nuevoUser').value.trim();
+            const nuevoPass = $('nuevoPass').value.trim();
+            if (!nuevoUser || !nuevoPass || nuevoUser.includes('/')) { mostrarToast('Escribe un usuario (sin diagonal) y una contraseña.', 'error'); return; }
+            if (listaUsuariosCloud[nuevoUser]) { mostrarToast('Ese usuario ya existe.', 'error'); return; }
+            try {
+                await setDoc(doc(db, 'usuarios', nuevoUser), await credencialesNuevas(nuevoPass));
+                mostrarToast('¡Usuario ' + nuevoUser + ' creado!');
+                $('crearUsuarioForm').reset();
+            } catch (err) {
+                console.error(err);
+                mostrarToast('No se pudo crear el usuario.', 'error');
+            }
         });
 
-        function actualizarSelectorSecciones() {
-            const select = $('filtroSeccion');
-            const valorActual = select.value;
-            // Extraer secciones únicas y ordenarlas
-            const secciones = [...new Set(listaGlobalRegistros.map(r => r.seccion).filter(Boolean))].sort();
-            
-            let html = '<option value="Todas">Todas las secciones</option>';
-            secciones.forEach(s => {
-                html += '<option value="' + esc(s) + '">Sección: ' + esc(s) + '</option>';
-            });
-            select.innerHTML = html;
-            select.value = secciones.includes(valorActual) ? valorActual : 'Todas';
+        $('cambiarPassForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!usuarioActual) return;
+            const nueva = $('passActualizar').value.trim();
+            if (!nueva) return;
+            try {
+                await setDoc(doc(db, 'usuarios', usuarioActual), await credencialesNuevas(nueva));
+                mostrarToast('¡Contraseña actualizada!');
+                $('cambiarPassForm').reset();
+            } catch (err) {
+                console.error(err);
+                mostrarToast('No se pudo actualizar la contraseña.', 'error');
+            }
+        });
+
+        function pintarColaboradores() {
+            const cont = $('listaColaboradoresCuerpo');
+            const nombres = Object.keys(listaUsuariosCloud).sort();
+            if (!nombres.length) { cont.innerHTML = '<p class="text-sm text-slate-400 text-center py-6">Sin cuentas.</p>'; return; }
+            cont.innerHTML = nombres.map((n) => {
+                const total = listaGlobalRegistros.filter((r) => r.registradoPor === n).length;
+                const boton = n === 'Admin'
+                    ? '<span class="text-[11px] text-slate-400">Administrador</span>'
+                    : '<button data-borrar-usuario="' + esc(n) + '" class="text-rose-600 hover:text-rose-800 text-xs font-semibold flex items-center gap-1"><i class="fa-solid fa-trash-can"></i> Eliminar</button>';
+                return '<div class="flex items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">' +
+                    '<div><p class="text-sm font-bold text-slate-800">' + esc(n) + '</p><p class="text-[11px] text-slate-500">' + total + ' registros capturados</p></div>' + boton + '</div>';
+            }).join('');
         }
 
-        function actualizarEstadisticas() {
-            const seccionSel = $('filtroSeccion').value;
-            const datosBase = seccionSel === 'Todas' ? listaGlobalRegistros : listaGlobalRegistros.filter(r => r.seccion === seccionSel);
-            
-            const total = datosBase.length;
-            const votaron = datosBase.filter(r => r.yaVoto).length;
-            const faltan = total - votaron;
-            
-            $('statTotal').textContent = total;
-            $('statVotaron').textContent = votaron;
-            $('statFaltan').textContent = faltan;
+        $('listaColaboradoresCuerpo').addEventListener('click', async (e) => {
+            const b = e.target.closest('[data-borrar-usuario]');
+            if (!b || !esAdmin()) return;
+            const n = b.getAttribute('data-borrar-usuario');
+            if (n === 'Admin') return;
+            if (!confirm('¿Eliminar la cuenta "' + n + '"? Sus registros se conservan.')) return;
+            try { await deleteDoc(doc(db, 'usuarios', n)); mostrarToast('Cuenta eliminada.'); }
+            catch (err) { console.error(err); mostrarToast('No se pudo eliminar la cuenta.', 'error'); }
+        });
+
+        window.abrirModalColaboradores = function () { if (!esAdmin()) return; pintarColaboradores(); $('modalColaboradores').classList.remove('hidden'); };
+        window.cerrarModalColaboradores = function () { $('modalColaboradores').classList.add('hidden'); };
+
+        // ==========================================
+        // LECTURA DE LA INE EN EL TELÉFONO (OCR local)
+        // ==========================================
+        const CAMPOS_INE = ['nombre', 'claveElector', 'edad', 'calle', 'numero', 'cruzamientos', 'seccion'];
+
+        function marcarCampo(id, estado) {
+            const el = $(id);
+            el.classList.remove('ring-2', 'ring-emerald-400', 'ring-amber-400', 'bg-emerald-50', 'bg-amber-50');
+            if (estado === 'ok') el.classList.add('ring-2', 'ring-emerald-400', 'bg-emerald-50');
+            else if (estado === 'revisar') el.classList.add('ring-2', 'ring-amber-400', 'bg-amber-50');
+        }
+        function limpiarMarcas() { CAMPOS_INE.forEach((id) => marcarCampo(id, 'vacio')); $('resultadoLectura').classList.add('hidden'); }
+        document.querySelectorAll('.campo-ine').forEach((el) => el.addEventListener('input', () => marcarCampo(el.id, 'vacio')));
+
+        function progreso(texto, pct) {
+            $('textoProceso').textContent = texto;
+            if (typeof pct === 'number') $('barraProceso').style.width = Math.max(0, Math.min(100, pct)) + '%';
         }
 
-        window.filtrarVoto = function (tipo) {
-            filtroVotoActual = tipo;
-            ['Todos', 'Votaron', 'Pendientes'].forEach(t => {
-                const btn = $('filtroVoto' + (t === 'Pendientes' ? 'No' : (t === 'Votaron' ? 'Si' : 'Todos')));
-                btn.className = t === tipo ? 'flex-1 py-2 rounded-lg bg-white shadow text-red-700 border border-slate-200 font-bold text-center' : 'flex-1 py-2 rounded-lg text-slate-600 hover:bg-white/50 text-center';
+        async function obtenerWorker() {
+            if (workerOCR) return workerOCR;
+            if (!window.Tesseract) throw new Error('No se cargó el lector de texto. Revisa tu conexión e intenta de nuevo.');
+            progreso('Preparando lector (la primera vez descarga ~2 MB)...', 5);
+            workerOCR = await Tesseract.createWorker('spa', 1, {
+                logger: (m) => {
+                    if (m.status === 'recognizing text') progreso('Leyendo credencial...', 30 + m.progress * 60);
+                    else if (/load|init/.test(m.status || '')) progreso('Preparando lector...', 5 + (m.progress || 0) * 20);
+                }
             });
+            return workerOCR;
+        }
+
+        async function cargarImagen(origen) {
+            if (window.createImageBitmap) {
+                try { return await createImageBitmap(origen); } catch (e) { /* se usa el método alterno */ }
+            }
+            return await new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(origen);
+                const img = new Image();
+                img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo abrir la imagen.')); };
+                img.src = url;
+            });
+        }
+
+        // Gris + estiramiento de contraste (y, opcionalmente, blanco y negro por Otsu).
+        // desdeX: fracción izquierda que se recorta (0.3 = se ignora el 30 % izquierdo, donde va la foto).
+        function prepararLienzo(img, binarizar, desdeX) {
+            const w0 = img.width || img.naturalWidth, h0 = img.height || img.naturalHeight;
+            const sx = Math.round(w0 * (desdeX || 0)), sw = w0 - sx;
+            const escala = Math.min(2000 / Math.max(sw, h0), 2.5);
+            const w = Math.round(sw * escala), h = Math.round(h0 * escala);
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            const ctx = c.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, sx, 0, sw, h0, 0, 0, w, h);
+            const data = ctx.getImageData(0, 0, w, h);
+            const px = data.data, n = w * h, gris = new Uint8Array(n), hist = new Array(256).fill(0);
+            for (let i = 0, j = 0; i < n; i++, j += 4) {
+                const g = Math.round(0.299 * px[j] + 0.587 * px[j + 1] + 0.114 * px[j + 2]);
+                gris[i] = g; hist[g]++;
+            }
+            let acum = 0, lo = 0, hi = 255;
+            for (let k = 0; k < 256; k++) { acum += hist[k]; if (acum >= n * 0.02) { lo = k; break; } }
+            acum = 0;
+            for (let k = 255; k >= 0; k--) { acum += hist[k]; if (acum >= n * 0.02) { hi = k; break; } }
+            const rango = Math.max(1, hi - lo);
+            let umbral = 128;
+            if (binarizar) {
+                const h2 = new Array(256).fill(0);
+                for (let i = 0; i < n; i++) { const v = Math.max(0, Math.min(255, Math.round((gris[i] - lo) * 255 / rango))); gris[i] = v; h2[v]++; }
+                let suma = 0; for (let k = 0; k < 256; k++) suma += k * h2[k];
+                let sB = 0, wB = 0, mejor = 0;
+                for (let k = 0; k < 256; k++) {
+                    wB += h2[k]; if (!wB) continue;
+                    const wF = n - wB; if (!wF) break;
+                    sB += k * h2[k];
+                    const mB = sB / wB, mF = (suma - sB) / wF;
+                    const varianza = wB * wF * (mB - mF) * (mB - mF);
+                    if (varianza > mejor) { mejor = varianza; umbral = k; }
+                }
+            }
+            for (let i = 0, j = 0; i < n; i++, j += 4) {
+                let v = binarizar ? (gris[i] > umbral ? 255 : 0)
+                    : Math.max(0, Math.min(255, Math.round((gris[i] - lo) * 255 / rango)));
+                px[j] = px[j + 1] = px[j + 2] = v; px[j + 3] = 255;
+            }
+            ctx.putImageData(data, 0, 0);
+            return c;
+        }
+
+        async function leerTexto(lienzo, psm) {
+            const worker = await obtenerWorker();
+            await worker.setParameters({ tessedit_pageseg_mode: String(psm), preserve_interword_spaces: '1' });
+            const { data } = await worker.recognize(lienzo);
+            return data.text || '';
+        }
+
+        function aplicarResultado(r) {
+            CAMPOS_INE.forEach((k) => {
+                const c = r.campos[k];
+                $(k).value = c.estado === 'vacio' ? '' : c.valor;
+                marcarCampo(k, c.estado);
+            });
+            const nombres = { nombre: 'Nombre', claveElector: 'Clave de elector', edad: 'Edad', calle: 'Calle', numero: 'Número', cruzamientos: 'Cruzamientos', seccion: 'Sección' };
+            const ok = [], revisar = [], faltan = [], notas = [];
+            CAMPOS_INE.forEach((k) => {
+                const c = r.campos[k];
+                if (c.estado === 'ok') ok.push(nombres[k]);
+                else if (c.estado === 'revisar') { revisar.push(nombres[k]); if (c.nota) notas.push(nombres[k] + ': ' + c.nota); }
+                else { faltan.push(nombres[k]); if (c.nota) notas.push(nombres[k] + ': ' + c.nota); }
+            });
+            r.avisos.forEach((a) => notas.push(a));
+            const caja = $('resultadoLectura');
+            const bien = !revisar.length && !faltan.length && !r.avisos.length;
+            caja.className = 'mb-4 p-3 rounded-xl border text-xs leading-snug ' + (bien ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-900');
+            let html = '';
+            if (ok.length) html += '<p><b class="text-emerald-700">Leído y validado:</b> ' + esc(ok.join(', ')) + '</p>';
+            if (revisar.length) html += '<p class="mt-1"><b>Revisa (amarillo):</b> ' + esc(revisar.join(', ')) + '</p>';
+            if (faltan.length) html += '<p class="mt-1"><b>No se pudo leer, captúralo:</b> ' + esc(faltan.join(', ')) + '</p>';
+            if (notas.length) html += '<ul class="mt-1 list-disc pl-4">' + notas.map((n) => '<li>' + esc(n) + '</li>').join('') + '</ul>';
+            html += '<p class="mt-1 text-slate-500">Si algo se ve mal, corrígelo a mano o vuelve a tomar la foto con más luz. Teléfono y cruzamientos (si no aparecen) se capturan a mano.</p>';
+            html += '<details class="mt-2"><summary class="cursor-pointer font-semibold text-slate-600">Ver texto leído (diagnóstico)</summary>' +
+                '<pre class="mt-1 whitespace-pre-wrap break-words text-[10px] leading-tight text-slate-600">' +
+                esc(r.lineas.map(INEParser.enmascarar).join('\n')) + '</pre></details>';
+            caja.innerHTML = html;
+            caja.classList.remove('hidden');
+        }
+
+        async function leerINE(origen) {
+            const indicador = $('indicadorProceso');
+            indicador.classList.remove('hidden');
+            progreso('Preparando imagen...', 3);
+            limpiarMarcas();
+            let img = null, lienzo = null;
+            try {
+                img = await cargarImagen(origen);
+                // Se prueban varias lecturas hasta tener nombre, edad, calle y sección.
+                const pasadas = [
+                    { txt: 'Leyendo credencial...', bin: false, x: 0, psm: 6 },
+                    { txt: 'Leyendo solo la zona de texto...', bin: false, x: 0.3, psm: 6 },
+                    { txt: 'Mejorando la lectura...', bin: true, x: 0, psm: 11 },
+                    { txt: 'Último intento de lectura...', bin: true, x: 0.3, psm: 6 }
+                ];
+                let resultado = null;
+                for (let i = 0; i < pasadas.length; i++) {
+                    const ps = pasadas[i];
+                    progreso(ps.txt, 15 + i * 20);
+                    if (lienzo) { lienzo.width = 0; lienzo.height = 0; }
+                    lienzo = prepararLienzo(img, ps.bin, ps.x);
+                    const lectura = INEParser.interpretar(await leerTexto(lienzo, ps.psm));
+                    resultado = INEParser.fusionar(resultado, lectura);
+                    if (INEParser.esSuficiente(resultado)) break;
+                }
+
+                aplicarResultado(resultado);
+                const util = CAMPOS_INE.some((k) => resultado.campos[k].estado !== 'vacio');
+                mostrarToast(util ? 'Lectura lista: revisa los campos marcados.' : 'No se pudo leer la INE. Toma otra foto con más luz o captura a mano.', util ? 'success' : 'error');
+                if (util) $('telefono').focus();
+            } catch (err) {
+                console.error(err);
+                mostrarToast('No se pudo leer la INE: ' + (err.message || 'error desconocido'), 'error');
+            } finally {
+                // La imagen se descarta: no se guarda ni se envía a ningún lado.
+                if (lienzo) { lienzo.width = 0; lienzo.height = 0; }
+                if (img && img.close) img.close();
+                img = null; lienzo = null;
+                indicador.classList.add('hidden');
+                progreso('Leyendo credencial...', 0);
+            }
+        }
+
+        window.procesarArchivo = function (event) {
+            const archivo = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (archivo) leerINE(archivo);
+        };
+
+        window.abrirCamaraEnVivo = async function () {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                mostrarToast('Este navegador no permite usar la cámara aquí. Usa "Cámara nativa".', 'error');
+                return;
+            }
+            $('modalCamaraEnVivo').classList.remove('hidden');
+            const video = $('videoEnVivo');
+            const intentos = [
+                { video: { facingMode: { exact: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } },
+                { video: { facingMode: 'environment' } },
+                { video: true }
+            ];
+            for (const c of intentos) {
+                try { mediaStreamVivo = await navigator.mediaDevices.getUserMedia(c); break; } catch (e) { mediaStreamVivo = null; }
+            }
+            if (!mediaStreamVivo) {
+                cerrarCamaraEnVivo();
+                mostrarToast('No se pudo abrir la cámara. Revisa el permiso del navegador o usa "Cámara nativa".', 'error');
+                return;
+            }
+            video.srcObject = mediaStreamVivo;
+            try { await video.play(); } catch (e) { /* algunos navegadores reproducen solos */ }
+        };
+
+        window.cerrarCamaraEnVivo = function () {
+            $('modalCamaraEnVivo').classList.add('hidden');
+            if (mediaStreamVivo) { mediaStreamVivo.getTracks().forEach((t) => t.stop()); mediaStreamVivo = null; }
+            $('videoEnVivo').srcObject = null;
+        };
+
+        window.capturarYLeer = function () {
+            const video = $('videoEnVivo');
+            if (!video.videoWidth) { mostrarToast('La cámara aún no está lista.', 'error'); return; }
+            const c = document.createElement('canvas');
+            c.width = video.videoWidth; c.height = video.videoHeight;
+            c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+            cerrarCamaraEnVivo();
+            c.toBlob((blob) => { c.width = 0; c.height = 0; if (blob) leerINE(blob); }, 'image/jpeg', 0.92);
+        };
+
+        // ==========================================
+        // REGISTROS
+        // ==========================================
+        function actualizarTiempo() {
+            const ahora = new Date();
+            $('fechaRegistro').value = ahora.toLocaleDateString('es-MX');
+            $('horaRegistro').value = ahora.toLocaleTimeString('es-MX');
+            $('liveClock').textContent = ahora.toLocaleTimeString('es-MX');
+        }
+        setInterval(actualizarTiempo, 1000);
+        actualizarTiempo();
+
+        function actualizarConexion() {
+            const en = navigator.onLine;
+            $('estadoConexion').innerHTML = en
+                ? '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Conectado'
+                : '<span class="w-2 h-2 rounded-full bg-amber-500"></span> Sin conexión: se guardará y sincronizará después';
+        }
+        window.addEventListener('online', actualizarConexion);
+        window.addEventListener('offline', actualizarConexion);
+        actualizarConexion();
+
+        function obtenerCategoriaEdad(edad) {
+            const n = parseInt(edad, 10);
+            if (n >= 18 && n <= 29) return 'Jóvenes';
+            if (n >= 30 && n <= 59) return 'Adultos';
+            if (n >= 60) return 'Adultos Mayores';
+            return 'Sin clasificar';
+        }
+
+        function normalizarNombre(s) {
+            return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        const coleccionRef = collection(db, 'registros');
+        const form = $('registroForm');
+
+        function valoresFormulario() {
+            return {
+                nombre: $('nombre').value.trim(),
+                claveElector: $('claveElector').value.trim().toUpperCase().replace(/\s+/g, ''),
+                edad: $('edad').value.trim(),
+                calle: $('calle').value.trim(),
+                cruzamientos: $('cruzamientos').value.trim(),
+                numero: $('numero').value.trim(),
+                seccion: $('seccion').value.trim(),
+                telefono: $('telefono').value.trim(),
+                facebook: $('facebook').value.trim()
+            };
+        }
+        function restaurarFormulario(v) { Object.keys(v).forEach((k) => { $(k).value = v[k]; }); }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!usuarioActual) { mostrarToast('Inicia sesión para guardar.', 'error'); return; }
+
+            const v = valoresFormulario();
+            const faltantes = ['nombre', 'edad', 'seccion', 'calle', 'cruzamientos', 'numero', 'telefono'].filter((k) => !v[k]);
+            if (faltantes.length) { mostrarToast('Faltan datos obligatorios: ' + faltantes.join(', ') + '.', 'error'); return; }
+            const edad = parseInt(v.edad, 10);
+            if (!(edad >= 18 && edad <= 120)) { mostrarToast('La edad debe estar entre 18 y 120 años.', 'error'); return; }
+            const tel = v.telefono.replace(/\D/g, '');
+            if (tel.length !== 10) { mostrarToast('El teléfono debe tener 10 dígitos.', 'error'); return; }
+
+            if (v.claveElector && v.claveElector.length !== 18) { mostrarToast('La clave de elector debe tener 18 caracteres (o déjala vacía).', 'error'); return; }
+
+            // Duplicados: se bloquean (por clave de elector o por nombre), como en la versión original.
+            const nombreNorm = normalizarNombre(v.nombre);
+            if (v.claveElector) {
+                const mismaClave = listaGlobalRegistros.find((r) => r.claveElector === v.claveElector);
+                if (mismaClave) { mostrarToast('Esa clave de elector ya está registrada a nombre de "' + mismaClave.nombre + '".', 'error'); return; }
+            }
+            if (listaGlobalRegistros.some((r) => normalizarNombre(r.nombre) === nombreNorm)) {
+                mostrarToast('El ciudadano "' + v.nombre + '" ya se encuentra registrado.', 'error');
+                return;
+            }
+
+            const nuevoDato = {
+                nombre: v.nombre,
+                claveElector: v.claveElector,
+                edad: edad,
+                categoria: obtenerCategoriaEdad(edad),
+                calle: v.calle,
+                cruzamientos: v.cruzamientos,
+                numero: v.numero,
+                seccion: v.seccion,
+                telefono: tel,
+                facebook: v.facebook || 'No proporcionado',
+                fecha: $('fechaRegistro').value,
+                hora: $('horaRegistro').value,
+                registradoPor: usuarioActual,
+                timestamp: serverTimestamp()
+            };
+
+            // Con conexión intermitente en campo, addDoc no termina hasta sincronizar:
+            // el formulario se limpia al instante y, si el guardado falla, se restauran los datos.
+            addDoc(coleccionRef, nuevoDato).catch((err) => {
+                console.error(err);
+                restaurarFormulario(v);
+                mostrarToast('No se pudo guardar el registro. Tus datos se restauraron en el formulario.', 'error');
+            });
+            form.reset();
+            limpiarMarcas();
+            actualizarTiempo();
+            mostrarToast(navigator.onLine ? '¡Registro guardado!' : 'Guardado en el teléfono; se enviará al volver la conexión.');
+        });
+
+        onSnapshot(coleccionRef, (snapshot) => {
+            listaGlobalRegistros = [];
+            snapshot.forEach((d) => listaGlobalRegistros.push({ id: d.id, ...d.data() }));
+            listaGlobalRegistros.sort((a, b) => {
+                const ta = a.timestamp && a.timestamp.toMillis ? a.timestamp.toMillis() : Number.MAX_SAFE_INTEGER;
+                const tb = b.timestamp && b.timestamp.toMillis ? b.timestamp.toMillis() : Number.MAX_SAFE_INTEGER;
+                return tb - ta;
+            });
+            actualizarConteoCategorias(listaGlobalRegistros);
+            filtrarRegistros();
+            if (!$('modalColaboradores').classList.contains('hidden')) pintarColaboradores();
+        }, (err) => {
+            console.error(err);
+            $('tablaCuerpo').innerHTML = '<tr><td colspan="7" class="text-center py-8 text-rose-600">No se pudieron cargar los registros (revisa conexión o permisos).</td></tr>';
+        });
+
+        function actualizarConteoCategorias(datos) {
+            $('cntTodos').textContent = datos.length;
+            $('cntJovenes').textContent = datos.filter((d) => d.categoria === 'Jóvenes').length;
+            $('cntAdultos').textContent = datos.filter((d) => d.categoria === 'Adultos').length;
+            $('cntMayores').textContent = datos.filter((d) => d.categoria === 'Adultos Mayores').length;
+        }
+
+        window.filtrarCategoria = function (categoria) {
+            categoriaSeleccionada = categoria;
+            ['Todos', 'Jovenes', 'Adultos', 'Mayores'].forEach((t) => {
+                $('tab' + t).className = 'flex-1 py-2 px-3 rounded-lg text-slate-600 hover:bg-white/50 transition text-center';
+            });
+            const activo = categoria === 'Jóvenes' ? 'tabJovenes' : categoria === 'Adultos' ? 'tabAdultos' : categoria === 'Adultos Mayores' ? 'tabMayores' : 'tabTodos';
+            $(activo).className = 'flex-1 py-2 px-3 rounded-lg bg-white shadow text-red-700 border border-slate-200 transition text-center font-bold';
             filtrarRegistros();
         };
 
-        window.filtrarRegistros = function () {
-            const texto = $('buscador').value.toLowerCase().trim();
-            const seccionSel = $('filtroSeccion').value;
-            
+        function obtenerFiltrados() {
+            const texto = normalizarNombre($('buscador').value);
             let filtrados = listaGlobalRegistros;
-            
-            // Filtro por sección
-            if (seccionSel !== 'Todas') {
-                filtrados = filtrados.filter(r => r.seccion === seccionSel);
-            }
-
-            // Filtro por estatus de voto
-            if (filtroVotoActual === 'Votaron') filtrados = filtrados.filter(r => r.yaVoto);
-            if (filtroVotoActual === 'Pendientes') filtrados = filtrados.filter(r => !r.yaVoto);
-
-            // Buscador por texto
+            if (categoriaSeleccionada !== 'Todos') filtrados = filtrados.filter((i) => i.categoria === categoriaSeleccionada);
             if (texto) {
-                filtrados = filtrados.filter(i => [i.nombre, i.calle, i.seccion, i.telefono, i.claveElector].some(c => String(c || '').toLowerCase().includes(texto)));
+                filtrados = filtrados.filter((i) => [i.nombre, i.calle, i.seccion, i.telefono, i.cruzamientos, i.claveElector]
+                    .some((c) => normalizarNombre(c).includes(texto)));
             }
-            
-            actualizarEstadisticas();
-            renderizarTabla(filtrados);
-        };
+            return filtrados;
+        }
+
+        window.filtrarRegistros = function () { renderizarTabla(obtenerFiltrados()); };
 
         function renderizarTabla(datos) {
             const tbody = $('tablaCuerpo');
             if (!usuarioActual) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-400">Inicia sesión para ver el control de votos.</td></tr>';
-                $('totalRegistros').textContent = 'Total: 0';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">Inicia sesión para ver los registros.</td></tr>';
+                $('totalRegistros').textContent = 'Total de registros: 0';
                 return;
             }
             if (!datos.length) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-400">No se encontraron registros en esta sección.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">No se encontraron registros.</td></tr>';
                 $('totalRegistros').textContent = 'Total: 0';
                 return;
             }
-            tbody.innerHTML = datos.map(i => {
-                const badgeVoto = i.yaVoto
-                    ? '<span class="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-check"></i> SÍ (VOTÓ)</span>'
-                    : '<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[11px] font-bold px-2.5 py-1 rounded-full"><i class="fa-solid fa-clock"></i> NO (PENDIENTE)</span>';
-                
-                const btnAccionVoto = i.yaVoto
-                    ? '<button onclick="cambiarEstatusVoto(\'' + i.id + '\', false)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded-xl transition" title="Marcar como pendiente">Desmarcar</button>'
-                    : '<button onclick="cambiarEstatusVoto(\'' + i.id + '\', true)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow transition" title="Marcar como votó"><i class="fa-solid fa-check mr-1"></i> Marcar Voto</button>';
-
+            tbody.innerHTML = datos.map((i) => {
+                const puedeBorrar = esAdmin() || i.registradoPor === usuarioActual;
+                const accion = puedeBorrar
+                    ? '<div class="flex items-center justify-center gap-3">' +
+                      '<button data-editar="' + esc(i.id) + '" class="text-sky-700 hover:text-sky-900" aria-label="Editar"><i class="fa-solid fa-pen-to-square"></i></button>' +
+                      '<button data-borrar="' + esc(i.id) + '" class="text-rose-600 hover:text-rose-800" aria-label="Eliminar"><i class="fa-solid fa-trash-can"></i></button></div>'
+                    : '<span class="text-slate-300"><i class="fa-solid fa-lock"></i></span>';
                 return '<tr class="hover:bg-slate-50 transition border-b border-slate-100">' +
-                    '<td class="p-3 font-bold text-slate-800">' + esc(i.nombre) + '</td>' +
-                    '<td class="p-3 text-xs text-slate-600"><p>' + esc(i.calle) + ' #' + esc(i.numero) + '</p><p class="text-[10px] text-slate-400">Sec: ' + esc(i.seccion) + '</p></td>' +
-                    '<td class="p-3 text-xs text-slate-600">' + esc(i.telefono) + '</td>' +
-                    '<td class="p-3 text-center">' + badgeVoto + (i.votoTimestamp ? '<p class="text-[9px] text-slate-400 mt-0.5">' + esc(i.votoTimestamp) + '</p>' : '') + '</td>' +
-                    '<td class="p-3 text-center">' + btnAccionVoto + '</td></tr>';
+                    '<td class="p-3 font-semibold text-slate-800">' + esc(i.nombre) + '</td>' +
+                    '<td class="p-3 text-xs"><span class="font-bold">' + (i.edad ? esc(i.edad) + 'a' : '—') + '</span> (' + esc(i.categoria) + ')</td>' +
+                    '<td class="p-3 text-slate-600 text-xs">' + esc(i.calle) + ' #' + esc(i.numero) + (i.cruzamientos ? ' (' + esc(i.cruzamientos) + ')' : '') + ', Sec: ' + esc(i.seccion) + '</td>' +
+                    '<td class="p-3 text-slate-600 text-xs">' + esc(i.telefono) + '</td>' +
+                    '<td class="p-3 text-slate-500 text-xs">' + esc(i.fecha) + '</td>' +
+                    '<td class="p-3 text-slate-600 text-xs font-semibold">' + esc(i.registradoPor || '—') +
+                        (i.editadoPor ? '<br><span class="text-[10px] font-normal text-slate-400">editó: ' + esc(i.editadoPor) + '</span>' : '') + '</td>' +
+                    '<td class="p-3 text-center">' + accion + '</td></tr>';
             }).join('');
-            $('totalRegistros').textContent = 'Total en vista: ' + datos.length;
+            $('totalRegistros').textContent = 'Total: ' + datos.length;
         }
 
-        window.cambiarEstatusVoto = async function (id, estatus) {
+        $('tablaCuerpo').addEventListener('click', (e) => {
+            const be = e.target.closest('[data-editar]');
+            if (be) abrirEditar(be.getAttribute('data-editar'));
+        });
+
+        $('tablaCuerpo').addEventListener('click', async (e) => {
+            const b = e.target.closest('[data-borrar]');
+            if (!b) return;
+            const id = b.getAttribute('data-borrar');
+            const reg = listaGlobalRegistros.find((r) => r.id === id);
+            if (!reg || !(esAdmin() || reg.registradoPor === usuarioActual)) return;
+            if (!confirm('¿Eliminar el registro de "' + reg.nombre + '"?')) return;
+            try { await deleteDoc(doc(db, 'registros', id)); mostrarToast('Registro eliminado.'); }
+            catch (err) { console.error(err); mostrarToast('No se pudo eliminar.', 'error'); }
+        });
+
+        // ==========================================
+        // EDITAR REGISTROS YA GUARDADOS
+        // ==========================================
+        let editandoId = null;
+
+        function puedeEditar(reg) { return !!usuarioActual && (esAdmin() || reg.registradoPor === usuarioActual); }
+
+        window.cerrarEditar = function () { editandoId = null; $('modalEditar').classList.add('hidden'); };
+
+        function abrirEditar(id) {
+            const r = listaGlobalRegistros.find((x) => x.id === id);
+            if (!r || !puedeEditar(r)) { mostrarToast('Solo puedes editar los registros que capturaste tú.', 'error'); return; }
+            editandoId = id;
+            $('edNombre').value = r.nombre || '';
+            $('edClave').value = r.claveElector || '';
+            $('edEdad').value = r.edad || '';
+            $('edSeccion').value = r.seccion || '';
+            $('edCalle').value = r.calle || '';
+            $('edNumero').value = r.numero || '';
+            $('edCruzamientos').value = r.cruzamientos || '';
+            $('edTelefono').value = r.telefono || '';
+            $('edFacebook').value = r.facebook && r.facebook !== 'No proporcionado' ? r.facebook : '';
+            $('edInfo').textContent = 'Capturado por ' + (r.registradoPor || '—') + (r.fecha ? ' el ' + r.fecha : '') + (r.origen ? ' · ' + r.origen : '') + (r.editadoPor ? ' · última edición: ' + r.editadoPor : '');
+            $('modalEditar').classList.remove('hidden');
+            $('edNombre').focus();
+        }
+
+        $('editarForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = editandoId;
+            const reg = listaGlobalRegistros.find((x) => x.id === id);
+            if (!reg || !puedeEditar(reg)) { cerrarEditar(); mostrarToast('Ya no puedes editar este registro.', 'error'); return; }
+
+            const nombre = $('edNombre').value.trim();
+            const clave = $('edClave').value.trim().toUpperCase().replace(/\s+/g, '');
+            const edadTxt = $('edEdad').value.trim();
+            const tel = $('edTelefono').value.replace(/\D/g, '');
+            if (!nombre) { mostrarToast('El nombre es obligatorio.', 'error'); return; }
+            if (clave && clave.length !== 18) { mostrarToast('La clave de elector debe tener 18 caracteres (o déjala vacía).', 'error'); return; }
+            let edad = null;
+            if (edadTxt) {
+                edad = parseInt(edadTxt, 10);
+                if (!(edad >= 18 && edad <= 120)) { mostrarToast('La edad debe estar entre 18 y 120 años.', 'error'); return; }
+            }
+            if (tel.length !== 10) { mostrarToast('El teléfono debe tener 10 dígitos.', 'error'); return; }
+
+            const otros = listaGlobalRegistros.filter((x) => x.id !== id);
+            const k = normalizarNombre(nombre);
+            if (otros.some((x) => normalizarNombre(x.nombre) === k)) { mostrarToast('Ya existe otro registro con el nombre "' + nombre + '".', 'error'); return; }
+            if (clave) {
+                const mismaClave = otros.find((x) => x.claveElector === clave);
+                if (mismaClave) { mostrarToast('Esa clave de elector ya está registrada a nombre de "' + mismaClave.nombre + '".', 'error'); return; }
+            }
+
+            const cambios = {
+                nombre: nombre,
+                claveElector: clave,
+                edad: edad,
+                categoria: obtenerCategoriaEdad(edad),
+                seccion: $('edSeccion').value.trim(),
+                calle: $('edCalle').value.trim(),
+                numero: $('edNumero').value.trim(),
+                cruzamientos: $('edCruzamientos').value.trim(),
+                telefono: tel,
+                facebook: $('edFacebook').value.trim() || 'No proporcionado',
+                editadoPor: usuarioActual,
+                fechaEdicion: new Date().toLocaleString('es-MX')
+            };
+            // Igual que al guardar: con mala señal la nube confirma después; si falla, se avisa.
+            updateDoc(doc(db, 'registros', id), cambios).catch((err) => {
+                console.error(err);
+                mostrarToast('No se pudieron guardar los cambios de "' + nombre + '". Intenta de nuevo.', 'error');
+            });
+            cerrarEditar();
+            mostrarToast(navigator.onLine ? 'Cambios guardados.' : 'Cambios guardados en el teléfono; se enviarán al volver la conexión.');
+        });
+
+        // ==========================================
+        // IMPORTAR LISTAS DESDE PDF (tablas con texto digital, se lee en el navegador)
+        // ==========================================
+        const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs';
+        const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+        let filasImport = [];
+        let nombreArchivoImport = '';
+
+        async function cargarPdfJs() {
+            const lib = await import(PDFJS_URL);
+            lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+            return lib;
+        }
+
+        window.cerrarImportar = function () { $('modalImportar').classList.add('hidden'); };
+
+        function actualizarBotonImport() {
+            const n = filasImport.filter((f) => f.marcada).length;
+            $('textoGuardarImport').textContent = 'Guardar seleccionados (' + n + ')';
+            $('btnGuardarImport').disabled = n === 0;
+        }
+
+        function estadoImportHtml(f) {
+            const p = f.persona;
+            if (f.duplicada) return '<span class="text-rose-600 font-semibold">Ya registrado</span>';
+            return (p.faltan.length
+                ? '<span class="text-amber-700 font-semibold">Falta: ' + esc(p.faltan.join(', ')) + '</span>'
+                : '<span class="text-emerald-700 font-semibold">Listo</span>')
+                + (p.avisos.length ? '<br><span class="text-slate-500">' + esc(p.avisos.join('; ')) + '</span>' : '');
+        }
+
+        function celdaImport(i, campo, valor, ancho) {
+            return '<td class="p-1.5"><input data-ed="' + i + '" data-campo="' + campo + '" value="' + esc(valor) + '"' +
+                (campo === 'edad' ? ' inputmode="numeric"' : campo === 'telefono' ? ' inputmode="tel"' : '') +
+                ' class="' + ancho + ' px-1.5 py-1 border border-slate-200 rounded bg-white text-xs focus:outline-none focus:ring-1 focus:ring-red-500"></td>';
+        }
+
+        function pintarImport() {
+            $('importCuerpo').innerHTML = filasImport.map((f, i) => {
+                const p = f.persona;
+                return '<tr class="' + (f.duplicada ? 'bg-rose-50/50' : '') + '">' +
+                    '<td class="p-2"><input type="checkbox" data-fila="' + i + '" class="h-4 w-4 accent-red-700" ' + (f.marcada ? 'checked' : '') + (f.duplicada ? ' disabled' : '') + '></td>' +
+                    celdaImport(i, 'nombre', p.nombre, 'w-44 font-semibold') +
+                    celdaImport(i, 'edad', p.edad, 'w-14') +
+                    celdaImport(i, 'seccion', p.seccion, 'w-16') +
+                    celdaImport(i, 'calle', p.calle, 'w-32') +
+                    celdaImport(i, 'numero', p.numero, 'w-16') +
+                    celdaImport(i, 'cruzamientos', p.cruzamientos, 'w-28') +
+                    celdaImport(i, 'telefono', p.telefono, 'w-28') +
+                    '<td class="p-2" data-estado="' + i + '">' + estadoImportHtml(f) + '</td>' +
+                    '<td class="p-2 text-right"><button data-formulario="' + i + '" class="text-red-700 hover:text-red-900 font-semibold whitespace-nowrap">Al formulario</button></td></tr>';
+            }).join('');
+            $('importTodos').checked = filasImport.some((f) => f.marcada) && filasImport.every((f) => f.marcada || f.duplicada);
+            actualizarBotonImport();
+        }
+
+        // Al escribir en la tabla se actualiza la persona y se vuelve a revisar sin perder el cursor.
+        function editarCeldaImport(i, campo, valor) {
+            const f = filasImport[i], p = f.persona;
+            if (campo === 'edad') { const n = parseInt(valor, 10); p.edad = n >= 18 && n <= 120 ? n : ''; }
+            else if (campo === 'telefono') p.telefono = valor.replace(/\D/g, '');
+            else p[campo] = valor.trim();
+            const ev = ListaPDF.evaluar(p);
+            p.faltan = ev.faltan; p.avisos = ev.avisos;
+            const k = normalizarNombre(p.nombre);
+            f.duplicada = !!k && (listaGlobalRegistros.some((r) => normalizarNombre(r.nombre) === k)
+                || filasImport.some((o, j) => j < i && normalizarNombre(o.persona.nombre) === k));
+            if (f.duplicada) f.marcada = false;
+            const tr = $('importCuerpo').children[i];
+            tr.className = f.duplicada ? 'bg-rose-50/50' : '';
+            tr.querySelector('[data-estado]').innerHTML = estadoImportHtml(f);
+            const cb = tr.querySelector('input[data-fila]');
+            cb.disabled = f.duplicada; cb.checked = f.marcada;
+            actualizarBotonImport();
+        }
+
+        window.procesarPDF = async function (event) {
+            const archivo = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!archivo) return;
+            if (!usuarioActual) { mostrarToast('Inicia sesión para importar.', 'error'); return; }
+            nombreArchivoImport = archivo.name;
+            filasImport = [];
+            $('importTablaWrap').classList.add('hidden');
+            $('importTitulo').textContent = archivo.name;
+            $('importEstado').textContent = 'Leyendo el PDF...';
+            $('btnGuardarImport').disabled = true;
+            $('modalImportar').classList.remove('hidden');
             try {
-                const horaActual = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-                await updateDoc(doc(db, 'registros', id), {
-                    yaVoto: estatus,
-                    votoTimestamp: estatus ? 'A las ' + horaActual : null
+                const lib = await cargarPdfJs();
+                const pdf = await lib.getDocument({ data: new Uint8Array(await archivo.arrayBuffer()) }).promise;
+                const paginas = [];
+                for (let n = 1; n <= pdf.numPages; n++) {
+                    const page = await pdf.getPage(n);
+                    const contenido = await page.getTextContent();
+                    paginas.push(contenido.items
+                        .filter((it) => typeof it.str === 'string' && it.str.trim())
+                        .map((it) => ({ str: it.str, x: it.transform[4], y: -it.transform[5], w: it.width, h: it.height || Math.abs(it.transform[3]) })));
+                }
+                const res = ListaPDF.extraer(paginas);
+                if (res.titulo) $('importTitulo').textContent = archivo.name + ' · ' + res.titulo;
+                if (!res.personas.length) { $('importEstado').textContent = res.aviso || 'No se encontraron registros en el PDF.'; return; }
+
+                const vistos = new Set();
+                filasImport = res.personas.map((p) => {
+                    const k = normalizarNombre(p.nombre);
+                    const duplicada = !!k && (vistos.has(k) || listaGlobalRegistros.some((r) => normalizarNombre(r.nombre) === k));
+                    if (k) vistos.add(k);
+                    const apta = !!p.nombre && p.telefono.length === 10 && !p.faltan.length;
+                    return { persona: p, duplicada: duplicada, marcada: apta && !duplicada };
                 });
-                mostrarToast(estatus ? '¡Voto marcado correctamente!' : 'Estatus cambiado a pendiente.');
-            } catch (err) { mostrarToast('No se pudo actualizar el estatus.', 'error'); }
+                const dup = filasImport.filter((f) => f.duplicada).length;
+                const inc = filasImport.filter((f) => !f.duplicada && f.persona.faltan.length).length;
+                $('importEstado').textContent = 'Se encontraron ' + filasImport.length + ' personas.' +
+                    (dup ? ' ' + dup + ' ya están registradas (no se importan).' : '') +
+                    (inc ? ' ' + inc + ' con datos incompletos quedaron sin marcar; márcalas si quieres importarlas así.' : '') +
+                    ' Revisa y presiona Guardar.';
+                $('importTablaWrap').classList.remove('hidden');
+                pintarImport();
+            } catch (err) {
+                console.error(err);
+                $('importEstado').textContent = 'No se pudo leer el PDF: ' + (err && err.message ? err.message : 'archivo no válido') + '. Si el problema persiste, revisa tu conexión (se descarga el lector de PDF la primera vez).';
+            }
+        };
+
+        $('importCuerpo').addEventListener('change', (e) => {
+            const i = e.target.getAttribute && e.target.getAttribute('data-fila');
+            if (i === null || i === undefined) return;
+            filasImport[+i].marcada = e.target.checked;
+            $('importTodos').checked = filasImport.every((f) => f.marcada || f.duplicada);
+            actualizarBotonImport();
+        });
+        $('importCuerpo').addEventListener('input', (e) => {
+            const t = e.target;
+            if (!t.getAttribute || t.getAttribute('data-ed') === null) return;
+            editarCeldaImport(+t.getAttribute('data-ed'), t.getAttribute('data-campo'), t.value);
+        });
+        $('importTodos').addEventListener('change', (e) => {
+            filasImport.forEach((f) => { if (!f.duplicada) f.marcada = e.target.checked; });
+            pintarImport();
+        });
+        $('importCuerpo').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-formulario]');
+            if (!b) return;
+            const p = filasImport[+b.getAttribute('data-formulario')].persona;
+            limpiarMarcas();
+            $('nombre').value = p.nombre; $('claveElector').value = p.claveElector || '';
+            $('edad').value = p.edad || ''; $('seccion').value = p.seccion; $('calle').value = p.calle;
+            $('numero').value = p.numero; $('cruzamientos').value = p.cruzamientos; $('telefono').value = p.telefono;
+            $('facebook').value = p.facebook || '';
+            cerrarImportar();
+            mostrarToast('Datos pasados al formulario. Completa lo que falte y guarda.');
+            $(p.edad ? 'telefono' : 'edad').focus();
+        });
+
+        window.guardarImportados = function () {
+            if (!usuarioActual) { mostrarToast('Inicia sesión para guardar.', 'error'); return; }
+            const marcadas = filasImport.filter((f) => f.marcada && !f.duplicada);
+            const sinNombre = marcadas.filter((f) => !f.persona.nombre);
+            if (sinNombre.length) { mostrarToast('Hay filas marcadas sin nombre. Escríbelo o desmárcalas.', 'error'); return; }
+            // Se revisa otra vez contra la nube y contra las demás filas, por si alguien registró a la persona mientras tanto.
+            const vistos = new Set();
+            const elegidas = marcadas.filter((f) => {
+                const k = normalizarNombre(f.persona.nombre);
+                if (vistos.has(k) || listaGlobalRegistros.some((r) => normalizarNombre(r.nombre) === k)) return false;
+                vistos.add(k);
+                return true;
+            });
+            if (!elegidas.length) { mostrarToast('No hay registros nuevos para guardar.', 'error'); return; }
+            const omitidas = marcadas.length - elegidas.length;
+            const ahora = new Date();
+            let fallos = 0;
+            elegidas.forEach((f) => {
+                const p = f.persona;
+                const edad = p.edad >= 18 && p.edad <= 120 ? p.edad : null;
+                addDoc(coleccionRef, {
+                    nombre: p.nombre,
+                    claveElector: p.claveElector || '',
+                    edad: edad,
+                    categoria: obtenerCategoriaEdad(edad),
+                    calle: p.calle,
+                    cruzamientos: p.cruzamientos,
+                    numero: p.numero,
+                    seccion: p.seccion,
+                    telefono: p.telefono,
+                    facebook: p.facebook || 'No proporcionado',
+                    fecha: ahora.toLocaleDateString('es-MX'),
+                    hora: ahora.toLocaleTimeString('es-MX'),
+                    registradoPor: usuarioActual,
+                    origen: 'PDF: ' + nombreArchivoImport,
+                    timestamp: serverTimestamp()
+                }).catch((err) => {
+                    console.error(err);
+                    fallos++;
+                    mostrarToast(fallos + ' registro(s) no se pudieron guardar. Vuelve a importar el PDF para reintentar.', 'error');
+                });
+            });
+            cerrarImportar();
+            mostrarToast((navigator.onLine ? 'Se enviaron ' + elegidas.length + ' registros a la nube.' : elegidas.length + ' registros guardados en el teléfono; se enviarán al volver la conexión.')
+                + (omitidas ? ' (' + omitidas + ' omitidos por repetidos)' : ''));
         };
 
         // ==========================================
-        // GENERACIÓN DE INFORME EN PDF (RESPETA FILTRO DE SECCIÓN)
+        // EXPORTACIÓN (solo Admin): todas las columnas
         // ==========================================
-        window.exportarPDFVotacion = function () {
-            if (!esAdmin()) { mostrarToast('Solo el administrador puede generar el informe PDF.', 'error'); return; }
-            
-            const seccionSel = $('filtroSeccion').value;
-            const datosExportar = seccionSel === 'Todas' ? listaGlobalRegistros : listaGlobalRegistros.filter(r => r.seccion === seccionSel);
+        const COLUMNAS = [
+            ['Nombre', 'nombre'], ['Clave de elector', 'claveElector'], ['Edad', 'edad'], ['Categoría', 'categoria'], ['Sección', 'seccion'],
+            ['Calle', 'calle'], ['Número', 'numero'], ['Cruzamientos', 'cruzamientos'], ['Teléfono', 'telefono'],
+            ['Facebook', 'facebook'], ['Fecha', 'fecha'], ['Hora', 'hora'], ['Registrado por', 'registradoPor']
+        ];
+        // Evita que Excel interprete texto como fórmula (=, +, -, @).
+        function seguro(v) {
+            const s = v == null ? '' : String(v);
+            return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+        }
 
-            if (!datosExportar.length) { mostrarToast('No hay registros para exportar en esta sección.', 'error'); return; }
+        window.exportarExcel = function () {
+            if (!usuarioActual) { mostrarToast('Inicia sesión para exportar.', 'error'); return; }
+            if (!listaGlobalRegistros.length) { mostrarToast('No hay registros para exportar.', 'error'); return; }
+            const filas = [COLUMNAS.map((c) => c[0])];
+            listaGlobalRegistros.forEach((r) => filas.push(COLUMNAS.map((c) => (c[1] === 'edad' ? r[c[1]] : seguro(r[c[1]])))));
+            const ws = XLSX.utils.aoa_to_sheet(filas);
+            ws['!cols'] = COLUMNAS.map((c) => ({ wch: c[1] === 'nombre' ? 30 : c[1] === 'claveElector' ? 22 : c[1] === 'calle' || c[1] === 'cruzamientos' ? 24 : 14 }));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
+            XLSX.writeFile(wb, 'Activismo_2027.xlsx');
+        };
 
+        window.exportarCSV = function () {
+            if (!usuarioActual) { mostrarToast('Inicia sesión para exportar.', 'error'); return; }
+            if (!listaGlobalRegistros.length) { mostrarToast('No hay registros para exportar.', 'error'); return; }
+            const celda = (v) => '"' + seguro(v).replace(/"/g, '""') + '"';
+            const lineas = [COLUMNAS.map((c) => celda(c[0])).join(',')]
+                .concat(listaGlobalRegistros.map((r) => COLUMNAS.map((c) => celda(r[c[1]])).join(',')));
+            const blob = new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'Activismo_2027.csv';
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        };
+
+        // ==========================================
+        // INFORME PDF (respeta la categoría y la búsqueda que estén en pantalla)
+        // ==========================================
+        const COLS_INFORME = ['#', 'Nombre', 'Edad', 'Categoría', 'Sección', 'Calle', 'Núm.', 'Cruzamientos', 'Teléfono', 'Registrado por', 'Fecha'];
+
+        function datosInforme() {
+            const cmp = (a, b) => String(a || '').localeCompare(String(b || ''), 'es', { numeric: true });
+            const lista = obtenerFiltrados().slice().sort((a, b) => cmp(a.seccion, b.seccion) || cmp(a.nombre, b.nombre));
+            const contar = (campo) => {
+                const m = {};
+                lista.forEach((r) => { const k = r[campo] || 'Sin dato'; m[k] = (m[k] || 0) + 1; });
+                return Object.entries(m).sort((x, y) => y[1] - x[1]);
+            };
+            const busqueda = $('buscador').value.trim();
+            return {
+                lista: lista,
+                porCategoria: contar('categoria'),
+                porColaborador: contar('registradoPor'),
+                filtro: 'Categoría: ' + categoriaSeleccionada + (busqueda ? ' | Búsqueda: "' + busqueda + '"' : ''),
+                generado: new Date().toLocaleString('es-MX')
+            };
+        }
+        function filaInforme(r, i) {
+            return [i + 1, r.nombre || '', r.edad || '-', r.categoria || '', r.seccion || '', r.calle || '', r.numero || '',
+                r.cruzamientos || '', r.telefono || '', r.registradoPor || '-', r.fecha || ''];
+        }
+        function nombreArchivoInforme() {
+            const d = new Date();
+            const p = (n) => String(n).padStart(2, '0');
+            return 'Informe_Activismo_2027_' + d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '.pdf';
+        }
+
+        function informePDF(d) {
             const { jsPDF } = window.jspdf;
-            const docPdf = new jsPDF('p', 'mm', 'a4');
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+            const ancho = doc.internal.pageSize.getWidth();
+            const alto = doc.internal.pageSize.getHeight();
+            const rojo = [185, 28, 28];
 
-            // Encabezado institucional del PDF
-            docPdf.setFontSize(16);
-            docPdf.setTextColor(185, 28, 28);
-            docPdf.text('Activismo 2027 • Informe Oficial de Votación', 14, 20);
+            doc.setFontSize(16); doc.setTextColor(185, 28, 28);
+            doc.text('Activismo 2027 - Informe de registros', 40, 42);
+            doc.setFontSize(9); doc.setTextColor(90, 90, 90);
+            doc.text('Generado: ' + d.generado + '   |   Por: ' + usuarioActual + '   |   ' + d.filtro + '   |   Total: ' + d.lista.length, 40, 60);
 
-            docPdf.setFontSize(10);
-            docPdf.setTextColor(100, 100, 100);
-            const total = datosExportar.length;
-            const votaron = datosExportar.filter(r => r.yaVoto).length;
-            const pendientes = total - votaron;
-            const textoSeccion = seccionSel === 'Todas' ? 'Todas las Secciones' : 'Sección: ' + seccionSel;
+            doc.autoTable({
+                startY: 74, head: [['Categoría', 'Registros']], body: d.porCategoria,
+                margin: { left: 40 }, tableWidth: 230, styles: { fontSize: 8 }, headStyles: { fillColor: rojo }
+            });
+            const y1 = doc.lastAutoTable.finalY;
+            doc.autoTable({
+                startY: 74, head: [['Registrado por', 'Registros']], body: d.porColaborador,
+                margin: { left: 300 }, tableWidth: 230, styles: { fontSize: 8 }, headStyles: { fillColor: [51, 65, 85] }
+            });
+            const y2 = doc.lastAutoTable.finalY;
 
-            docPdf.text('Filtro: ' + textoSeccion + ' | Fecha: ' + new Date().toLocaleDateString('es-MX') + ' | Total: ' + total + ' | Votaron: ' + votaron + ' | Pendientes: ' + pendientes, 14, 28);
-
-            // Mapeo de filas para la tabla del PDF
-            const columnas = ['Nombre Completo', 'Sección', 'Teléfono', 'Registro', '¿Ya Votó?', 'Hora de Voto'];
-            const filas = datosExportar.map(r => [
-                r.nombre,
-                r.seccion,
-                r.telefono,
-                r.fecha + ' ' + r.hora,
-                r.yaVoto ? 'SÍ' : 'NO',
-                r.votoTimestamp ? r.votoTimestamp.replace('A las ', '') : '-'
-            ]);
-
-            docPdf.autoTable({
-                head: [columnas],
-                body: filas,
-                startY: 35,
-                styles: { fontSize: 8, cellPadding: 3 },
-                headStyles: { fillColor: [185, 28, 28] },
-                columnStyles: {
-                    4: { fontStyle: 'bold', textColor: row => row.cell.raw === 'SÍ' ? [16, 185, 129] : [217, 119, 6] }
-                }
+            doc.autoTable({
+                startY: Math.max(y1, y2) + 18,
+                head: [COLS_INFORME], body: d.lista.map(filaInforme),
+                margin: { left: 40, right: 40, bottom: 34 },
+                styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak' },
+                headStyles: { fillColor: rojo },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: { 0: { cellWidth: 24 }, 2: { cellWidth: 30 }, 4: { cellWidth: 40 }, 6: { cellWidth: 36 } }
             });
 
-            docPdf.save('Informe_Votacion_' + (seccionSel === 'Todas' ? 'General' : 'Seccion_' + seccionSel) + '.pdf');
-            mostrarToast('¡Informe en PDF generado con éxito!');
+            const paginas = doc.getNumberOfPages();
+            for (let n = 1; n <= paginas; n++) {
+                doc.setPage(n); doc.setFontSize(8); doc.setTextColor(120, 120, 120);
+                doc.text('Página ' + n + ' de ' + paginas, ancho - 40, alto - 18, { align: 'right' });
+                doc.text('Activismo 2027', 40, alto - 18);
+            }
+            doc.save(nombreArchivoInforme());
+        }
+
+        // Respaldo si la librería de PDF no se pudo descargar: hoja lista para "Guardar como PDF".
+        function informeImprimible(d) {
+            const fila = (f) => '<tr>' + f.map((c) => '<td>' + esc(c) + '</td>').join('') + '</tr>';
+            const resumen = (t, filas) => '<table class="r"><thead><tr><th>' + t + '</th><th>Registros</th></tr></thead><tbody>' + filas.map((f) => fila(f)).join('') + '</tbody></table>';
+            const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Informe Activismo 2027</title><style>' +
+                '@page{size:letter landscape;margin:12mm}body{font-family:Arial,sans-serif;font-size:11px;color:#222}h1{color:#b91c1c;font-size:18px;margin:0 0 4px}' +
+                'p{margin:0 0 10px;color:#555}table{border-collapse:collapse;width:100%}th{background:#b91c1c;color:#fff;text-align:left}th,td{border:1px solid #ddd;padding:3px 5px}' +
+                'tbody tr:nth-child(even){background:#f8fafc}.r{width:auto;min-width:220px;margin:0 20px 12px 0;display:inline-table;vertical-align:top}</style></head><body>' +
+                '<h1>Activismo 2027 - Informe de registros</h1><p>Generado: ' + esc(d.generado) + ' | Por: ' + esc(usuarioActual) + ' | ' + esc(d.filtro) + ' | Total: ' + d.lista.length + '</p>' +
+                resumen('Categoría', d.porCategoria) + resumen('Registrado por', d.porColaborador) +
+                '<table><thead><tr>' + COLS_INFORME.map((c) => '<th>' + esc(c) + '</th>').join('') + '</tr></thead><tbody>' + d.lista.map((r, i) => fila(filaInforme(r, i))).join('') + '</tbody></table></body></html>';
+            const w = window.open('', '_blank');
+            if (!w) { mostrarToast('El navegador bloqueó la ventana del informe. Permite las ventanas emergentes e intenta de nuevo.', 'error'); return; }
+            w.document.open(); w.document.write(html); w.document.close();
+            w.focus();
+            setTimeout(() => { try { w.print(); } catch (e) { /* el usuario puede imprimir manualmente */ } }, 500);
+        }
+
+        window.exportarInforme = function () {
+            if (!usuarioActual) { mostrarToast('Inicia sesión para generar el informe.', 'error'); return; }
+            const d = datosInforme();
+            if (!d.lista.length) { mostrarToast('No hay registros para el informe.', 'error'); return; }
+            try {
+                if (window.jspdf && window.jspdf.jsPDF) informePDF(d);
+                else { informeImprimible(d); mostrarToast('No se pudo cargar el generador de PDF; se abrió una hoja para imprimir o guardar como PDF.'); }
+            } catch (err) {
+                console.error(err);
+                mostrarToast('No se pudo generar el informe PDF: ' + (err.message || 'error desconocido'), 'error');
+            }
         };
+
+        actualizarPermisosUI();
     </script>
+<script>
+(function(){
+  var dp=null, esIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  var standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  function mostrar(v){var b=document.getElementById('btnInstalar'); if(b) b.style.display=v?'flex':'none';}
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;mostrar(true);});
+  window.addEventListener('appinstalled',function(){dp=null;mostrar(false);});
+  window.instalarApp=async function(){
+    if(dp){dp.prompt(); await dp.userChoice; dp=null; mostrar(false);}
+    else if(esIOS){document.getElementById('modalIOS').style.display='flex';}
+  };
+  document.addEventListener('DOMContentLoaded',function(){ if(!standalone && esIOS) mostrar(true); });
+  var reg=null;
+  function aviso(){document.getElementById('bannerUpd').style.display='flex';}
+  window.actualizarApp=function(){ if(reg&&reg.waiting) reg.waiting.postMessage('SKIP_WAITING'); };
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('sw.js').then(function(r){
+        reg=r;
+        if(r.waiting&&navigator.serviceWorker.controller) aviso();
+        r.addEventListener('updatefound',function(){var w=r.installing; w.addEventListener('statechange',function(){ if(w.state==='installed'&&navigator.serviceWorker.controller) aviso(); });});
+      }).catch(function(){});
+      var rec=false; navigator.serviceWorker.addEventListener('controllerchange',function(){ if(rec) return; rec=true; location.reload(); });
+    });
+  }
+})();
+</script>
 </body>
 </html>

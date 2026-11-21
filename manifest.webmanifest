@@ -1,13 +1,16 @@
 {
-  "id": "./Conteovotos.html",
-  "name": "Activismo 2027 - Control de Votación",
-  "short_name": "Conteo Votos",
-  "description": "Módulo de control de votación",
-  "lang": "es-MX",
-  "start_url": "./Conteovotos-instalable.html",
+  "name": "Activismo 2027",
+  "short_name": "Activismo",
+  "id": "./",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f1f5f9",
   "theme_color": "#b91c1c",
-  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "lang": "es-MX",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
 }
