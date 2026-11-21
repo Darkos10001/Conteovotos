@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#b91c1c">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Activismo">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -2440,16 +2441,29 @@
 <script>
 (function(){
   var dp=null, esIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  var standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+  var standalone=window.matchMedia('(display-mode: standalone)').matches||window.matchMedia('(display-mode: fullscreen)').matches||window.matchMedia('(display-mode: minimal-ui)').matches||navigator.standalone;
   function mostrar(v){var b=document.getElementById('btnInstalar'); if(b) b.style.display=v?'flex':'none';}
   window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;mostrar(true);});
   window.addEventListener('appinstalled',function(){dp=null;mostrar(false);});
+  function instrucciones(){
+    var ua=navigator.userAgent, ios=esIOS||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+    var android=/android/i.test(ua), mov=android||ios;
+    if(ios){
+      if(/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua)) return 'Toca el botón <b>Compartir</b> (cuadro con flecha) y elige <b>"Añadir a pantalla de inicio"</b>. Si no aparece la opción, abre esta página en <b>Safari</b> y repite el paso.';
+      return 'En <b>Safari</b> toca <b>Compartir</b> (cuadro con flecha) y luego <b>"Añadir a pantalla de inicio"</b>.';
+    }
+    if(/SamsungBrowser/.test(ua)) return 'Toca el menú <b>☰</b> y elige <b>"Añadir página a"</b> → <b>"Pantalla de inicio"</b> (o el icono de instalar en la barra de direcciones).';
+    if(/Firefox/.test(ua)&&android) return 'Toca el menú <b>⋮</b> y elige <b>"Instalar"</b> o <b>"Añadir a pantalla de inicio"</b>.';
+    if(/Firefox/.test(ua)) return 'Firefox de computadora no instala apps web. Abre esta página en <b>Chrome</b> o <b>Edge</b> y usa el icono de instalar en la barra de direcciones.';
+    if(/OPR|Opera/.test(ua)&&mov) return 'Toca el menú <b>⋮</b> y elige <b>"Añadir a pantalla de inicio"</b>.';
+    if(mov) return 'Toca el menú <b>⋮</b> del navegador y elige <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>. Si no aparece, abre esta página en <b>Chrome</b>.';
+    if(/Safari/.test(ua)&&!/Chrome|Chromium/.test(ua)) return 'En Safari (Mac): menú <b>Archivo</b> → <b>"Añadir al Dock"</b>.';
+    return 'Busca el icono de <b>instalar</b> (monitor con flecha) en la barra de direcciones, o abre el menú <b>⋮</b> → <b>"Instalar Activismo 2027"</b>.';
+  }
   window.instalarApp=async function(){
     if(dp){dp.prompt(); await dp.userChoice; dp=null; mostrar(false);}
     else {
-      document.getElementById('modalIOSTxt').innerHTML = esIOS
-        ? 'En <b>Safari</b> toca el botón <b>Compartir</b> y luego <b>"Añadir a pantalla de inicio"</b>.'
-        : 'Abre el menú del navegador (<b>⋮</b> o <b>☰</b>) y elige <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>.';
+      document.getElementById('modalIOSTxt').innerHTML = instrucciones();
       document.getElementById('modalIOS').style.display='flex';
     }
   };
